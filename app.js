@@ -1,8 +1,34 @@
 let i18nStrings = {};
 const touchedFields = {};
 let isPrintLayoutMode = false;
+const VIEWPORT_PREVIEW_KEY = "viewportPreviewMode";
+const VIEWPORT_PREVIEW_VALUES = new Set(["auto", "mobile", "desktop"]);
+
+function ApplyViewportPreviewMode(mode) {
+    const root = document.documentElement;
+    const safeMode = VIEWPORT_PREVIEW_VALUES.has(mode) ? mode : "auto";
+    root.classList.toggle("preview-mobile", safeMode === "mobile");
+    root.classList.toggle("preview-desktop", safeMode === "desktop");
+}
+
+function GetViewportPreviewMode() {
+    const paramsMode = new URLSearchParams(window.location.search).get("preview");
+    if (VIEWPORT_PREVIEW_VALUES.has(paramsMode)) return paramsMode;
+
+    const savedMode = localStorage.getItem(VIEWPORT_PREVIEW_KEY);
+    return VIEWPORT_PREVIEW_VALUES.has(savedMode) ? savedMode : "auto";
+}
+
+window.setViewportPreviewMode = mode => {
+    const safeMode = VIEWPORT_PREVIEW_VALUES.has(mode) ? mode : "auto";
+    localStorage.setItem(VIEWPORT_PREVIEW_KEY, safeMode);
+    ApplyViewportPreviewMode(safeMode);
+};
+
+window.getViewportPreviewMode = () => GetViewportPreviewMode();
 
 document.addEventListener("DOMContentLoaded", () => {
+    ApplyViewportPreviewMode(GetViewportPreviewMode());
     
     // Language handling
     const langSelect = document.getElementById("languageSelect");
@@ -186,7 +212,7 @@ async function loadLanguage(lang) {
         document.documentElement.dir = rtlLanguages.has(lang) ? "rtl" : "ltr";
 
         document.querySelectorAll("[data-i18n]").forEach(el => {
-            el.textContent = i18nStrings[el.dataset.i18n] || "[" + el.dataset.i18n + "]";
+            el.textContent = i18nStrings[el.dataset.i18n] || el.dataset.i18n;
         });
         RefreshValidationErrors();
         RenderSpecification();
@@ -201,7 +227,7 @@ async function loadLanguage(lang) {
 }
 
 function translate(key, vars = {}) {
-    let text = i18nStrings[key] || `[${key}]`;
+    let text = i18nStrings[key] || key;
     for (const [name, value] of Object.entries(vars)) {
         text = text.replace(`{${name}}`, value);
     }

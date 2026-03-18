@@ -27,6 +27,13 @@ window.setViewportPreviewMode = mode => {
 
 window.getViewportPreviewMode = () => GetViewportPreviewMode();
 
+function IsMobileLayout() {
+    const root = document.documentElement;
+    if (root.classList.contains("preview-mobile")) return true;
+    if (root.classList.contains("preview-desktop")) return false;
+    return window.matchMedia("(max-width: 600px)").matches;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     ApplyViewportPreviewMode(GetViewportPreviewMode());
     
@@ -37,7 +44,6 @@ document.addEventListener("DOMContentLoaded", () => {
             loadLanguage(e.target.value);
         });
     }
-    InitProfileSystemControls();
     window.addEventListener("beforeprint", () => {
         isPrintLayoutMode = true;
         DrawWindow();
@@ -47,155 +53,46 @@ document.addEventListener("DOMContentLoaded", () => {
         DrawWindow();
     });
 
-    // Window witdh
-    const focusWidth = document.getElementById('width');
-    if (focusWidth) {
-        focusWidth.focus();
-        focusWidth.addEventListener('input', () => {
-            UpdateWindow();
-        });
-        focusWidth.addEventListener("blur", () => {
-            MarkFieldTouched("width");
-            HandleDimensionBlurValidation();
-        });
-    }
-    
-    // Window height
-    const focusHeight = document.getElementById('height');
-    if (focusHeight) {
-        focusHeight.addEventListener('input', () => {
-            UpdateWindow();
-        });
-        focusHeight.addEventListener("blur", () => {
-            MarkFieldTouched("height");
-            HandleDimensionBlurValidation();
-        });
-    }
-
-    // Number of Window bays
-    const focusCntBays = document.getElementById('cnt_bays');
-    if (focusCntBays) {
-        focusCntBays.addEventListener('input', () => {
-            UpdateWindow();
-        });
-        focusCntBays.addEventListener("blur", () => {
-            MarkFieldTouched("cnt_bays");
-            HandleDimensionBlurValidation();
-        });
-    }
-
-    // Window Design
-    const focusIBays = document.getElementById("identical_bays");
-    if (focusIBays) {
-        focusIBays.addEventListener("change", (e) => {
-            const locked = focusIBays.checked;
-            document.getElementById("identicalBayWidth").classList.toggle("hidden", locked);
-            document.getElementById("identicalBayHeight").classList.toggle("hidden", locked);
-            document.getElementById("bayWidthError").classList.toggle("hidden", locked);
-            document.getElementById("bayHeightError").classList.toggle("hidden", locked);
+    const templateSelect = document.getElementById("win_template");
+    if (templateSelect) {
+        templateSelect.addEventListener("change", () => {
+            windowModel.template = templateSelect.value;
+            ToggleTemplateControls();
             UpdateWindow();
         });
     }
 
-    // Bay width
-    const bayWidthInput = document.getElementById("bayWidth");
-    if (bayWidthInput) {
-        bayWidthInput.addEventListener("input", (e) => {
-            if (windowModel.selectedBay === null) return;
-
-            const index = windowModel.selectedBay;
-            const newWidth = Number(e.target.value);
-            if (newWidth <= 0) return;
-
-            const cnt = windowModel.bays.length;
-
-            // Total available width inside outer frame
-            const totalMullions  = GetTotalMullionWidth();
-            const totalAvailable = windowModel.width - profile.outerFrame.left - profile.outerFrame.right - totalMullions + GetTotalOverlapAllowance();
-
-            // calculate width used by other bays
-            const totalUsed = windowModel.bays.reduce((sum, bay, i) => {
-                return i === index ? sum : sum + bay.width;
-            }, 0);
-            if (totalUsed <= 0) return;
-
-            const remainingWidth = totalAvailable - newWidth;
-            if (remainingWidth <= 0) return;
-
-            // scale other bays proportionally
-            windowModel.bays.forEach((bay, i) => {
-                if (i === index) {
-                    bay.width = newWidth;
-                } else {
-                    bay.width = (bay.width / totalUsed) * remainingWidth;
-                }
-            });
-
-            RecalcBays();
-            DrawWindow();
-            ValidateBayConstraints();
-        });
-        bayWidthInput.addEventListener("blur", () => {
-            MarkFieldTouched("bayWidth");
-            ValidateBayConstraints();
-        });
-    }
-
-    // Bay height
-    const bayHeightInput = document.getElementById("bayHeight");
-    if (bayHeightInput) {
-        bayHeightInput.addEventListener("input", e => {
-            if (windowModel.selectedBay === null) return;
-            const selectedBay  = windowModel.bays[windowModel.selectedBay];
-            const selectedProfile = selectedBay ? GetBayStructureProfile(selectedBay.opening) : GetBayStructureProfile("fixed");
-            const maxBayHeight = windowModel.height - profile.outerFrame.top - profile.outerFrame.bottom + 2 * selectedProfile.sashOverlap;
-            const newHeight    = Number(e.target.value);
-            if (Number.isNaN(newHeight) || newHeight <= 0) return;
-
-            windowModel.bays[windowModel.selectedBay].height = Math.min(newHeight, maxBayHeight);
-            //e.target.value = Math.round(windowModel.bays[windowModel.selectedBay].height);
-            e.target.value = windowModel.bays[windowModel.selectedBay].height;
-            RecalcBays();
-            DrawWindow();
-            ValidateBayConstraints();
-        });
-        bayHeightInput.addEventListener("blur", () => {
-            MarkFieldTouched("bayHeight");
-            ValidateBayConstraints();
-        });
-    }
-
-    // Bay opening type
-    const openingType = document.getElementById("openingType");
-    if (openingType) {
-        openingType.addEventListener("change", e => {
-            if (windowModel.selectedBay === null) return;
-            const bay = windowModel.bays[windowModel.selectedBay];
-            bay.opening = e.target.value;
-            const directions = openingDirectionOptions[bay.opening] || [];
-            if (!directions.includes(bay.openingDirection)) {
-                bay.openingDirection = directions[0] || "";
+    const unitSelect = document.getElementById("unit");
+    if (unitSelect) {
+        unitSelect.addEventListener("change", () => {
+            const prevUnit = windowModel.unit || unitSelect.value;
+            const nextUnit = unitSelect.value;
+            if (prevUnit !== nextUnit) {
+                ConvertInputValue(document.getElementById("widthMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("heightMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionLeftWidthMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionLeftHeightMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionCenterWidthMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionCenterHeightMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionRightWidthMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionRightHeightMeasure"), prevUnit, nextUnit);
+                windowModel.unit = nextUnit;
             }
-            UpdateOpeningDirectionControl();
-            document.getElementById("openingDirection").value = bay.openingDirection || "";
-            RecalcBays();
-            DrawWindow();
-            ValidateBayConstraints();
+            UpdateUnitLabels();
+            RenderMeasurements();
         });
+        windowModel.unit = unitSelect.value;
     }
 
-    const openingDirection = document.getElementById("openingDirection");
-    if (openingDirection) {
-        openingDirection.addEventListener("change", e => {
-            if (windowModel.selectedBay === null) return;
-            windowModel.bays[windowModel.selectedBay].openingDirection = e.target.value;
-            DrawWindow();
-            ValidateBayConstraints();
-        });
-    }
+    BindMeasureInputs();
+    BindSectionMeasurementInputs();
+    BindSectionSelector();
+    BindSectionToggleButtons();
 
     init();
+    ToggleTemplateControls();
     UpdateWindow();
+    RenderMeasurements();
 
 });
 
@@ -214,12 +111,9 @@ async function loadLanguage(lang) {
         document.querySelectorAll("[data-i18n]").forEach(el => {
             el.textContent = i18nStrings[el.dataset.i18n] || el.dataset.i18n;
         });
+        UpdateUnitLabels();
         RefreshValidationErrors();
         RenderSpecification();
-        if (windowModel.selectedBay !== null) {
-            showBayControls();
-        }
-
         localStorage.setItem("language", lang);
     } catch(err) {
         console.error("Failed to load language:", err);
@@ -232,6 +126,81 @@ function translate(key, vars = {}) {
         text = text.replace(`{${name}}`, value);
     }
     return text;
+}
+
+function UnitToMm(unit) {
+    if (unit === "m") return 1000;
+    if (unit === "cm") return 10;
+    return 1;
+}
+
+function GetSelectedUnitLabel() {
+    const unitSelect = document.getElementById("unit");
+    if (!unitSelect) return "mm";
+    const option = unitSelect.options[unitSelect.selectedIndex];
+    return option ? option.value : "mm";
+}
+
+function FormatValue(value, unit) {
+    if (!Number.isFinite(value)) return "";
+    if (unit === "mm") return String(Math.round(value));
+    const rounded = Math.round(value * 100) / 100;
+    return String(rounded);
+}
+
+function FormatMeasurement(valueMm) {
+    const unit = GetSelectedUnitLabel();
+    const scale = UnitToMm(unit);
+    return FormatValue(valueMm / scale, unit);
+}
+
+function ConvertValueBetweenUnits(value, fromUnit, toUnit) {
+    const fromScale = UnitToMm(fromUnit);
+    const toScale = UnitToMm(toUnit);
+    return value * fromScale / toScale;
+}
+
+function ConvertInputValue(input, fromUnit, toUnit) {
+    if (!input) return;
+    const raw = input.value;
+    if (raw === "") return;
+    const value = ParseNumericValue(raw);
+    if (!Number.isFinite(value)) return;
+    const converted = ConvertValueBetweenUnits(value, fromUnit, toUnit);
+    input.value = FormatValue(converted, toUnit);
+}
+
+function UpdateUnitLabels() {
+    const unit = GetSelectedUnitLabel();
+    const widthLabel = `${translate("width")} (${unit})`;
+    const heightLabel = `${translate("height")} (${unit})`;
+    document.querySelectorAll("[data-i18n=\"width\"]").forEach(el => {
+        el.textContent = widthLabel;
+    });
+    document.querySelectorAll("[data-i18n=\"height\"]").forEach(el => {
+        el.textContent = heightLabel;
+    });
+    document.querySelectorAll("[data-i18n=\"add\"]").forEach(el => {
+        el.textContent = "+";
+        el.setAttribute("title", translate("add"));
+        el.setAttribute("aria-label", translate("add"));
+    });
+    UpdateSectionToggleButtons();
+    UpdateSectionSelector();
+    RenderSpecification();
+    RefreshValidationErrors();
+}
+
+function ParseNumericValue(raw) {
+    if (typeof raw !== "string") {
+        return Number(raw);
+    }
+    const cleaned = raw
+        .trim()
+        .replace(/[\s\u00A0\u202F]/g, "")
+        .replace(",", ".");
+    if (cleaned === "") return Number.NaN;
+    return Number(cleaned);
 }
 
 function init() {
@@ -258,296 +227,131 @@ const cadTheme = {
     dimension:      "#67e8f9",
     opening:        "#f6d365"
 };
-
-const openingDirectionOptions = {
-    fixed:     [],
-    casement:  ["left_to_right", "right_to_left"],
-    tilt_turn: ["left_to_right", "right_to_left"],
-    hopper:    ["bottom_to_top", "top_to_bottom"],
-    transom:   ["top_to_bottom", "bottom_to_top"],
-    sliding:   ["left_to_right", "right_to_left"]
-};
-
-const profileSystemCatalog = {
-    klil: {
-        label: "KLIL",
-        series: {
-            basic_7000: {
-                label: "Basic 7000 (Sliding)",
-                profile: {
-                    outerFrame: {left: 78, right: 78, top: 78, bottom: 78},
-                    bayFrame:   {left: 52, right: 52, top: 52, bottom: 52},
-                    verticalMullion:   56,
-                    horizontalMullion: 56,
-                    sashOverlap:       12,
-                    glassInset:        12
-                },
-                openingStructureProfiles: {
-                    fixed:     {verticalMullion: 52, horizontalMullion: 52, sashOverlap: 10, glassInset: 10},
-                    casement:  {verticalMullion: 56, horizontalMullion: 54, sashOverlap: 14, glassInset: 12},
-                    tilt_turn: {verticalMullion: 58, horizontalMullion: 56, sashOverlap: 15, glassInset: 12},
-                    hopper:    {verticalMullion: 52, horizontalMullion: 54, sashOverlap: 13, glassInset: 11},
-                    transom:   {verticalMullion: 52, horizontalMullion: 54, sashOverlap: 12, glassInset: 10},
-                    sliding:   {verticalMullion: 48, horizontalMullion: 50, sashOverlap: 10, glassInset: 14}
-                },
-                validationRules: {
-                    window:  {minWidth: 700, maxWidth: 7600, minHeight: 700, maxHeight: 3200, minCntBays: 1, maxCntBays: 8},
-                    mullion: {min: 35, max: 140},
-                    opening: {
-                        fixed:     {minWidth: 350, maxWidth: 2400, minHeight: 350, maxHeight: 2800},
-                        casement:  {minWidth: 450, maxWidth: 1100, minHeight: 700, maxHeight: 2400},
-                        tilt_turn: {minWidth: 550, maxWidth: 1200, minHeight: 800, maxHeight: 2500},
-                        hopper:    {minWidth: 500, maxWidth: 2000, minHeight: 350, maxHeight: 1300},
-                        transom:   {minWidth: 500, maxWidth: 2200, minHeight: 300, maxHeight: 1200},
-                        sliding:   {minWidth: 900, maxWidth: 3200, minHeight: 700, maxHeight: 2800}
-                    },
-                    glassSafety: {
-                        fixed:    {maxEdge: 2400, maxAreaM2: 4.8},
-                        operable: {maxEdge: 1700, maxAreaM2: 2.8}
-                    }
-                }
-            },
-            bauhaus_2600: {
-                label: "Bauhaus 2600 (Lift & Slide)",
-                profile: {
-                    outerFrame: {left: 92, right: 92, top: 92, bottom: 92},
-                    bayFrame:   {left: 58, right: 58, top: 58, bottom: 58},
-                    verticalMullion:   64,
-                    horizontalMullion: 64,
-                    sashOverlap:       14,
-                    glassInset:        14
-                },
-                openingStructureProfiles: {
-                    fixed:     {verticalMullion: 56, horizontalMullion: 56, sashOverlap: 12, glassInset: 12},
-                    casement:  {verticalMullion: 60, horizontalMullion: 58, sashOverlap: 15, glassInset: 14},
-                    tilt_turn: {verticalMullion: 62, horizontalMullion: 60, sashOverlap: 16, glassInset: 14},
-                    hopper:    {verticalMullion: 56, horizontalMullion: 58, sashOverlap: 14, glassInset: 13},
-                    transom:   {verticalMullion: 56, horizontalMullion: 58, sashOverlap: 13, glassInset: 12},
-                    sliding:   {verticalMullion: 52, horizontalMullion: 54, sashOverlap: 12, glassInset: 16}
-                },
-                validationRules: {
-                    window:  {minWidth: 900, maxWidth: 9000, minHeight: 700, maxHeight: 3600, minCntBays: 1, maxCntBays: 8},
-                    mullion: {min: 40, max: 180},
-                    opening: {
-                        fixed:     {minWidth: 400,  maxWidth: 2800, minHeight: 400, maxHeight: 3000},
-                        casement:  {minWidth: 500,  maxWidth: 1200, minHeight: 700, maxHeight: 2500},
-                        tilt_turn: {minWidth: 600,  maxWidth: 1300, minHeight: 800, maxHeight: 2600},
-                        hopper:    {minWidth: 550,  maxWidth: 2200, minHeight: 350, maxHeight: 1400},
-                        transom:   {minWidth: 550,  maxWidth: 2400, minHeight: 300, maxHeight: 1200},
-                        sliding:   {minWidth: 1200, maxWidth: 3800, minHeight: 700, maxHeight: 3000}
-                    },
-                    glassSafety: {
-                        fixed:    {maxEdge: 2800, maxAreaM2: 6.0},
-                        operable: {maxEdge: 1900, maxAreaM2: 3.2}
-                    }
-                }
-            }
-        }
-    },
-    extal: {
-        label: "EXTAL",
-        series: {
-            extal_4300: {
-                label: "4300 (Sliding)",
-                profile: {
-                    outerFrame: {left: 76, right: 76, top: 76, bottom: 76},
-                    bayFrame:   {left: 50, right: 50, top: 50, bottom: 50},
-                    verticalMullion:   54,
-                    horizontalMullion: 54,
-                    sashOverlap:       12,
-                    glassInset:        12
-                },
-                openingStructureProfiles: {
-                    fixed:     {verticalMullion: 52, horizontalMullion: 52, sashOverlap: 10, glassInset: 10},
-                    casement:  {verticalMullion: 54, horizontalMullion: 52, sashOverlap: 14, glassInset: 12},
-                    tilt_turn: {verticalMullion: 56, horizontalMullion: 54, sashOverlap: 15, glassInset: 12},
-                    hopper:    {verticalMullion: 50, horizontalMullion: 52, sashOverlap: 13, glassInset: 11},
-                    transom:   {verticalMullion: 50, horizontalMullion: 52, sashOverlap: 12, glassInset: 10},
-                    sliding:   {verticalMullion: 48, horizontalMullion: 50, sashOverlap: 10, glassInset: 14}
-                },
-                validationRules: {
-                    window:  {minWidth: 700, maxWidth: 7800, minHeight: 700, maxHeight: 3300, minCntBays: 1, maxCntBays: 8},
-                    mullion: {min: 35, max: 150},
-                    opening: {
-                        fixed:     {minWidth: 350, maxWidth: 2500, minHeight: 350, maxHeight: 2800},
-                        casement:  {minWidth: 450, maxWidth: 1100, minHeight: 700, maxHeight: 2400},
-                        tilt_turn: {minWidth: 550, maxWidth: 1200, minHeight: 800, maxHeight: 2500},
-                        hopper:    {minWidth: 500, maxWidth: 2000, minHeight: 350, maxHeight: 1400},
-                        transom:   {minWidth: 500, maxWidth: 2200, minHeight: 300, maxHeight: 1200},
-                        sliding:   {minWidth: 900, maxWidth: 3400, minHeight: 700, maxHeight: 2900}
-                    },
-                    glassSafety: {
-                        fixed:    {maxEdge: 2500, maxAreaM2: 5.2},
-                        operable: {maxEdge: 1800, maxAreaM2: 3.0}
-                    }
-                }
-            }
-        }
-    },
-    rehau: {
-        label: "REHAU (uPVC)",
-        series: {
-            synego_80: {
-                label: "SYNEGO 80",
-                profile: {
-                    outerFrame: {left: 80, right: 80, top: 80, bottom: 80},
-                    bayFrame:   {left: 52, right: 52, top: 52, bottom: 52},
-                    verticalMullion:   54,
-                    horizontalMullion: 54,
-                    sashOverlap:       16,
-                    glassInset:        14
-                },
-                openingStructureProfiles: {
-                    fixed:     {verticalMullion: 52, horizontalMullion: 52, sashOverlap: 12, glassInset: 12},
-                    casement:  {verticalMullion: 56, horizontalMullion: 54, sashOverlap: 16, glassInset: 14},
-                    tilt_turn: {verticalMullion: 58, horizontalMullion: 56, sashOverlap: 17, glassInset: 14},
-                    hopper:    {verticalMullion: 50, horizontalMullion: 52, sashOverlap: 15, glassInset: 13},
-                    transom:   {verticalMullion: 50, horizontalMullion: 52, sashOverlap: 13, glassInset: 12},
-                    sliding:   {verticalMullion: 46, horizontalMullion: 50, sashOverlap: 10, glassInset: 15}
-                },
-                validationRules: {
-                    window:  {minWidth: 700, maxWidth: 7400, minHeight: 700, maxHeight: 3400, minCntBays: 1, maxCntBays: 8},
-                    mullion: {min: 35, max: 130},
-                    opening: {
-                        fixed:     {minWidth: 300, maxWidth: 2400, minHeight: 300, maxHeight: 2800},
-                        casement:  {minWidth: 450, maxWidth: 1100, minHeight: 700, maxHeight: 2500},
-                        tilt_turn: {minWidth: 500, maxWidth: 1200, minHeight: 800, maxHeight: 2600},
-                        hopper:    {minWidth: 450, maxWidth: 1900, minHeight: 350, maxHeight: 1400},
-                        transom:   {minWidth: 450, maxWidth: 2100, minHeight: 300, maxHeight: 1200},
-                        sliding:   {minWidth: 700, maxWidth: 2800, minHeight: 700, maxHeight: 2700}
-                    },
-                    glassSafety: {
-                        fixed:    {maxEdge: 2400, maxAreaM2: 4.5},
-                        operable: {maxEdge: 1700, maxAreaM2: 2.8}
-                    }
-                }
-            }
-        }
-    }
-};
-
-const defaultManufacturerId = Object.keys(profileSystemCatalog)[0];
-const defaultSeriesId = Object.keys(profileSystemCatalog[defaultManufacturerId].series)[0];
-let activeProfileSelection = {
-    manufacturerId: defaultManufacturerId,
-    seriesId: defaultSeriesId
-};
-
-function GetSeriesConfig(manufacturerId, seriesId) {
-    return profileSystemCatalog[manufacturerId]?.series?.[seriesId] || null;
-}
-
-function GetActiveSeriesConfig() {
-    const active = GetSeriesConfig(activeProfileSelection.manufacturerId, activeProfileSelection.seriesId);
-    return active || profileSystemCatalog[defaultManufacturerId].series[defaultSeriesId];
-}
-
-const profile = new Proxy({}, {
-    get(_, prop) {
-        return GetActiveSeriesConfig().profile[prop];
-    }
-});
-
-const openingStructureProfiles = new Proxy({}, {
-    get(_, prop) {
-        return GetActiveSeriesConfig().openingStructureProfiles[prop];
-    }
-});
-
-const validationRules = new Proxy({}, {
-    get(_, prop) {
-        return GetActiveSeriesConfig().validationRules[prop];
-    }
-});
-
-function GetManufacturerIds() {
-    return Object.keys(profileSystemCatalog);
-}
-
-function GetSeriesIds(manufacturerId) {
-    return Object.keys(profileSystemCatalog[manufacturerId]?.series || {});
-}
-
-function InitProfileSystemControls() {
-    const manufacturerSelect = document.getElementById("manufacturerSelect");
-    const profileSeriesSelect = document.getElementById("profileSeriesSelect");
-    if (!manufacturerSelect || !profileSeriesSelect) return;
-
-    const manufacturerIds = GetManufacturerIds();
-    if (!manufacturerIds.length) return;
-
-    manufacturerSelect.innerHTML = "";
-    manufacturerIds.forEach(id => {
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = profileSystemCatalog[id].label;
-        manufacturerSelect.appendChild(option);
-    });
-
-    const savedManufacturer  = localStorage.getItem("profileManufacturer");
-    const activeManufacturer = manufacturerIds.includes(savedManufacturer) ? savedManufacturer : manufacturerIds[0];
-    manufacturerSelect.value = activeManufacturer;
-
-    PopulateSeriesOptions(activeManufacturer);
-    const seriesIds    = GetSeriesIds(activeManufacturer);
-    const savedSeries  = localStorage.getItem("profileSeries");
-    const activeSeries = seriesIds.includes(savedSeries) ? savedSeries : seriesIds[0];
-    profileSeriesSelect.value = activeSeries;
-    ApplyProfileSystem(activeManufacturer, activeSeries);
-
-    manufacturerSelect.addEventListener("change", e => {
-        const manufacturerId = e.target.value;
-        PopulateSeriesOptions(manufacturerId);
-        const nextSeries = GetSeriesIds(manufacturerId)[0];
-        profileSeriesSelect.value = nextSeries;
-        ApplyProfileSystem(manufacturerId, nextSeries);
-    });
-
-    profileSeriesSelect.addEventListener("change", e => {
-        ApplyProfileSystem(manufacturerSelect.value, e.target.value);
-    });
-}
-
-function PopulateSeriesOptions(manufacturerId) {
-    const profileSeriesSelect = document.getElementById("profileSeriesSelect");
-    if (!profileSeriesSelect) return;
-    profileSeriesSelect.innerHTML = "";
-    GetSeriesIds(manufacturerId).forEach(seriesId => {
-        const option = document.createElement("option");
-        option.value = seriesId;
-        option.textContent = profileSystemCatalog[manufacturerId].series[seriesId].label;
-        profileSeriesSelect.appendChild(option);
-    });
-}
-
-function ApplyProfileSystem(manufacturerId, seriesId) {
-    const series = GetSeriesConfig(manufacturerId, seriesId);
-    if (!series) return;
-
-    activeProfileSelection = {manufacturerId, seriesId};
-
-    localStorage.setItem("profileManufacturer", manufacturerId);
-    localStorage.setItem("profileSeries", seriesId);
-
-    UpdateWindow();
-    if (windowModel.selectedBay !== null) {
-        showBayControls();
-    }
-}
+//const validationRules = {
+//    window: {minWidth: 700, maxWidth: 7600, minHeight: 700, maxHeight: 3200}
+//};
 
 const validationIssues  = {};
-const globalErrorFields = ["width", "height", "cnt_bays"];
-const bayErrorFields    = ["bayWidth", "bayHeight"];
 
 // Window
 let windowModel = {
     width:   0,
     height:  0,
-    cntBays: 1,
-    identicalBays: true,
-    bays: [],
-    selectedBay: null,
+    template: "flat",
+    measurements: {
+        widths: [],
+        heights: []
+    },
+    measurementDrafts: {
+        width: Number.NaN,
+        height: Number.NaN
+    },
+    sectionMeasurements: [
+        {widths: [], heights: []},
+        {widths: [], heights: []},
+        {widths: [], heights: []}
+    ],
+    sectionDrafts: [
+        {width: Number.NaN, height: Number.NaN},
+        {width: Number.NaN, height: Number.NaN},
+        {width: Number.NaN, height: Number.NaN}
+    ],
+    sectionEnabled: [true, true, true],
+    sectionOrder: [],
+    sectionCompleteIndices: [],
+    sections: [],
+    lastHeight: 0,
 };
+
+function EnsureSectionMeasurements() {
+    if (!Array.isArray(windowModel.sectionMeasurements)) {
+        windowModel.sectionMeasurements = [];
+    }
+    while (windowModel.sectionMeasurements.length < 3) {
+        windowModel.sectionMeasurements.push({widths: [], heights: []});
+    }
+    windowModel.sectionMeasurements = windowModel.sectionMeasurements.slice(0, 3).map(section => ({
+        widths: Array.isArray(section.widths) ? section.widths : [],
+        heights: Array.isArray(section.heights) ? section.heights : []
+    }));
+    if (!Array.isArray(windowModel.sectionDrafts)) {
+        windowModel.sectionDrafts = [];
+    }
+    while (windowModel.sectionDrafts.length < 3) {
+        windowModel.sectionDrafts.push({width: Number.NaN, height: Number.NaN});
+    }
+    windowModel.sectionDrafts = windowModel.sectionDrafts.slice(0, 3).map(section => ({
+        width: Number.isFinite(section.width) ? section.width : Number.NaN,
+        height: Number.isFinite(section.height) ? section.height : Number.NaN
+    }));
+    if (!Array.isArray(windowModel.sectionEnabled)) {
+        windowModel.sectionEnabled = [true, true, true];
+    }
+    while (windowModel.sectionEnabled.length < 3) {
+        windowModel.sectionEnabled.push(true);
+    }
+    windowModel.sectionEnabled = windowModel.sectionEnabled.slice(0, 3).map(value => Boolean(value));
+    windowModel.sectionEnabled[1] = true;
+}
+
+function EnsureMeasurementDrafts() {
+    if (!windowModel.measurementDrafts || typeof windowModel.measurementDrafts !== "object") {
+        windowModel.measurementDrafts = {width: Number.NaN, height: Number.NaN};
+    } else {
+        windowModel.measurementDrafts = {
+            width: Number.isFinite(windowModel.measurementDrafts.width) ? windowModel.measurementDrafts.width : Number.NaN,
+            height: Number.isFinite(windowModel.measurementDrafts.height) ? windowModel.measurementDrafts.height : Number.NaN
+        };
+    }
+}
+
+function MarkSectionEdited(sectionIndex) {
+    if (!Array.isArray(windowModel.sectionOrder)) {
+        windowModel.sectionOrder = [];
+    }
+    if (!windowModel.sectionOrder.includes(sectionIndex)) {
+        windowModel.sectionOrder.push(sectionIndex);
+    }
+}
+
+function EnsureSections() {
+    const template = windowModel.template || "flat";
+    const W = Number.isFinite(windowModel.width) ? windowModel.width : 1200;
+    const H = Number.isFinite(windowModel.height) ? windowModel.height : 1200;
+    const count = template === "flat" ? 1 : 3;
+
+    if (windowModel.sections.length !== count) {
+        windowModel.sections = Array.from({length: count}, () => ({width: W / count || 0, height: H}));
+    }
+
+    if (template === "flat" && windowModel.lastHeight !== H && Number.isFinite(H)) {
+        windowModel.sections = windowModel.sections.map(section => ({
+            ...section,
+            height: H
+        }));
+        windowModel.lastHeight = H;
+    }
+
+    NormalizeSectionWidths();
+}
+
+function NormalizeSectionWidths() {
+    const W = windowModel.width;
+    if (!Number.isFinite(W) || W <= 0 || windowModel.sections.length === 0) return;
+
+    const total = windowModel.sections.reduce((sum, section) => sum + (Number(section.width) || 0), 0);
+    if (total <= 0) {
+        const width = W / windowModel.sections.length;
+        windowModel.sections.forEach(section => {
+            section.width = width;
+        });
+        return;
+    }
+    const scale = W / total;
+    windowModel.sections.forEach(section => {
+        section.width = section.width * scale;
+    });
+}
 
 function SetFieldError(inputId, errorKey, vars = {}, options = {}) {
     SetFieldIssue(inputId, errorKey, vars, "hard", options.whyKey || "why.hardLimit");
@@ -625,93 +429,587 @@ function SetWarningIfEmpty(inputId, warningKey, vars = {}, options = {}) {
     SetFieldWarning(inputId, warningKey, vars, options);
 }
 
-function GetOpeningLimits(opening) {
-    return validationRules.opening[opening] || validationRules.opening.fixed;
-}
-
-function GetGlassSafetyLimit(opening) {
-    return opening === "fixed" ? validationRules.glassSafety.fixed : validationRules.glassSafety.operable;
-}
-
-function GetBayStructureProfile(opening) {
-    const baseProfile = openingStructureProfiles.fixed || {};
-    const override = openingStructureProfiles[opening] || baseProfile;
-    return {
-        verticalMullion:   override.verticalMullion ?? baseProfile.verticalMullion ?? 0,
-        horizontalMullion: override.horizontalMullion ?? baseProfile.horizontalMullion ?? 0,
-        sashOverlap:       override.sashOverlap ?? baseProfile.sashOverlap ?? 0,
-        glassInset:        override.glassInset ?? baseProfile.glassInset ?? 0
-    };
-}
-
-function GetInterBayMullionWidth(index) {
-    const left  = windowModel.bays[index];
-    const right = windowModel.bays[index + 1];
-    if (!left || !right) return GetBayStructureProfile("fixed").verticalMullion;
-    const lp = GetBayStructureProfile(left.opening);
-    const rp = GetBayStructureProfile(right.opening);
-    //return Math.round((lp.verticalMullion + rp.verticalMullion) / 2);
-    return (lp.verticalMullion + rp.verticalMullion) / 2;
-}
-
-function GetTotalMullionWidth() {
-    if (windowModel.bays.length <= 1) return 0;
-    let sum = 0;
-    for (let i = 0; i < windowModel.bays.length - 1; i++) {
-        sum += GetInterBayMullionWidth(i);
-    }
-    return sum;
-}
-
-function GetTotalOverlapAllowance() {
-    return windowModel.bays.reduce((sum, bay) => {
-        return sum + 2 * GetBayStructureProfile(bay.opening).sashOverlap;
-    }, 0);
-}
-
 // Show the drawing
 function UpdateWindow() {
     GetDimensions();
-    if (!ValidateDimensions()) return;
-    SyncronizeBays();
+    const template = windowModel.template || "flat";
+    if (template === "flat") {
+        EnsureSections();
+        if (!Number.isFinite(windowModel.width) || !Number.isFinite(windowModel.height)) {
+            DrawWindow();
+            RenderMeasurements();
+            RenderSpecification();
+            return;
+        }
+    }
+    //const isValid = ValidateDimensions();
+    if (template === "flat" /*&& !isValid*/) {
+        DrawWindow();
+        RenderMeasurements();
+        RenderSpecification();
+        return;
+    }
     DrawWindow();
-    ValidateBayConstraints();
+    RenderMeasurements();
+    RenderSpecification();
 }
 
 function GetDimensions() {
-    windowModel.width   = ParseNumberInput("width");
-    windowModel.height  = ParseNumberInput("height");
-    windowModel.cntBays = ParseNumberInput("cnt_bays");
-    windowModel.identicalBays = document.getElementById("identical_bays").checked;
-}
-
-function ParseNumberInput(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return Number.NaN;
-    const raw = input.value.trim();
-    if (raw === "") return Number.NaN;
-    return Number(raw);
-}
-
-function MarkFieldTouched(inputId) {
-    touchedFields[inputId] = true;
-}
-
-function HandleDimensionBlurValidation() {
-    GetDimensions();
-    const hasValidDimensions = ValidateDimensions();
-    if (hasValidDimensions && windowModel.selectedBay !== null) {
-        ValidateBayConstraints();
+    const templateSelect = document.getElementById("win_template");
+    if (templateSelect) {
+        windowModel.template = templateSelect.value;
     }
+    const template = windowModel.template || "flat";
+    if (template === "flat") {
+        EnsureMeasurementDrafts();
+        const width  = GetMinMeasurement("widths");
+        const height = GetMinMeasurement("heights");
+        const widthValue  = Number.isFinite(width) ? width : windowModel.measurementDrafts.width;
+        const heightValue = Number.isFinite(height) ? height : windowModel.measurementDrafts.height;
+        if (!Number.isFinite(widthValue) || !Number.isFinite(heightValue)) {
+            windowModel.width  = Number.NaN;
+            windowModel.height = Number.NaN;
+        } else {
+            windowModel.width  = widthValue;
+            windowModel.height = heightValue;
+        }
+        return;
+    }
+
+    EnsureSectionMeasurements();
+    const sectionSizes = windowModel.sectionMeasurements.map((section, index) => {
+        if (!windowModel.sectionEnabled[index]) {
+            return {index, width: Number.NaN, height: Number.NaN, drawable: false};
+        }
+        const draft  = windowModel.sectionDrafts[index] || {width: Number.NaN, height: Number.NaN};
+        const width  = GetMinValue(section.widths);
+        const height = GetMinValue(section.heights);
+        const widthValue  = Number.isFinite(width) ? width : draft.width;
+        const heightValue = Number.isFinite(height) ? height : draft.height;
+        const hasWidth  = Number.isFinite(widthValue);
+        const hasHeight = Number.isFinite(heightValue);
+        if (!hasWidth || !hasHeight) {
+            return {index, width: Number.NaN, height: Number.NaN, drawable: false};
+        }
+        return {
+            index,
+            width: widthValue,
+            height: heightValue,
+            drawable: true
+        };
+    });
+
+    const completeSections = sectionSizes.filter(section => section.drawable);
+    windowModel.sectionCompleteIndices = completeSections.map(section => section.index);
+
+    let orderedIndices = Array.isArray(windowModel.sectionOrder) ? windowModel.sectionOrder.slice() : [];
+    orderedIndices = orderedIndices.filter(index => windowModel.sectionCompleteIndices.includes(index));
+    if (orderedIndices.length === 0 && windowModel.sectionCompleteIndices.length > 0) {
+        orderedIndices = windowModel.sectionCompleteIndices.slice();
+    }
+
+    windowModel.sections = orderedIndices.map(index => {
+        const section = sectionSizes[index];
+        return {
+            index,
+            width: section.width,
+            height: section.height
+        };
+    });
+
+    if (windowModel.sections.length === 0) {
+        windowModel.width = Number.NaN;
+        windowModel.height = Number.NaN;
+        return;
+    }
+
+    windowModel.width = windowModel.sections.reduce((sum, section) => sum + section.width, 0);
+    windowModel.height = Math.max(...windowModel.sections.map(section => section.height));
 }
 
 function ShouldShowFieldError(inputId) {
     return Boolean(touchedFields[inputId]);
 }
 
-function ValidateDimensions() {
+function BindMeasureInputs() {
+    const widthInput  = document.getElementById("widthMeasure");
+    const heightInput = document.getElementById("heightMeasure");
+    const addWidth    = document.getElementById("addWidth");
+    const addHeight   = document.getElementById("addHeight");
+    const widthList   = document.getElementById("widthList");
+    const heightList  = document.getElementById("heightList");
+
+    if (addWidth) {
+        addWidth.textContent = "+";
+        addWidth.setAttribute("title", translate("add"));
+        addWidth.setAttribute("aria-label", translate("add"));
+        addWidth.addEventListener("click", () => {
+            AddMeasurement("widths", widthInput);
+        });
+    }
+    if (addHeight) {
+        addHeight.textContent = "+";
+        addHeight.setAttribute("title", translate("add"));
+        addHeight.setAttribute("aria-label", translate("add"));
+        addHeight.addEventListener("click", () => {
+            AddMeasurement("heights", heightInput);
+        });
+    }
+    if (widthInput) {
+        widthInput.addEventListener("input", () => {
+            const value = ParseNumericValue(widthInput.value);
+            EnsureMeasurementDrafts();
+            if (!Number.isFinite(value) || value <= 0) return;
+            const unit = GetSelectedUnitLabel();
+            windowModel.measurementDrafts.width = value * UnitToMm(unit);
+            UpdateWindow();
+            RenderMeasurements();
+        });
+        widthInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddMeasurement("widths", widthInput);
+            }
+        });
+    }
+    if (heightInput) {
+        heightInput.addEventListener("input", () => {
+            const value = ParseNumericValue(heightInput.value);
+            EnsureMeasurementDrafts();
+            if (!Number.isFinite(value) || value <= 0) return;
+            const unit = GetSelectedUnitLabel();
+            windowModel.measurementDrafts.height = value * UnitToMm(unit);
+            UpdateWindow();
+            RenderMeasurements();
+        });
+        heightInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddMeasurement("heights", heightInput);
+            }
+        });
+    }
+    if (widthList) {
+        widthList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveMeasurement("widths", index);
+        });
+    }
+    if (heightList) {
+        heightList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveMeasurement("heights", index);
+        });
+    }
+}
+
+function BindSectionMeasurementInputs() {
+    const container = document.getElementById("sectionControls");
+    if (!container) return;
+
+    const getInputFor = (section, kind) =>
+        container.querySelector(`input[data-section="${section}"][data-kind="${kind}"]`);
+
+    const applyFirstValue = (sectionIndex, kind, input) => {
+        if (!input) return;
+        const value = ParseNumericValue(input.value);
+        EnsureSectionMeasurements();
+        if (!Number.isFinite(value) || value <= 0) return;
+        const draft = windowModel.sectionDrafts[sectionIndex];
+        const unit = GetSelectedUnitLabel();
+        const valueMm = value * UnitToMm(unit);
+        if (kind === "widths") {
+            draft.width = valueMm;
+        } else {
+            draft.height = valueMm;
+        }
+        MarkSectionEdited(sectionIndex);
+        UpdateWindow();
+        RenderMeasurements();
+    };
+
+    container.querySelectorAll("button[data-section][data-kind]").forEach(btn => {
+        btn.textContent = "+";
+        btn.setAttribute("title", translate("add"));
+        btn.setAttribute("aria-label", translate("add"));
+    });
+
+    container.addEventListener("click", e => {
+        const btn = e.target.closest("button[data-section][data-kind]");
+        if (!btn) return;
+        const sectionIndex = Number(btn.dataset.section);
+        const kind = btn.dataset.kind;
+        const input = getInputFor(sectionIndex, kind);
+        AddSectionMeasurement(sectionIndex, kind, input);
+    });
+
+    container.addEventListener("keydown", e => {
+        if (e.key !== "Enter") return;
+        const input = e.target.closest("input[data-section][data-kind]");
+        if (!input) return;
+        e.preventDefault();
+        const sectionIndex = Number(input.dataset.section);
+        const kind = input.dataset.kind;
+        AddSectionMeasurement(sectionIndex, kind, input);
+    });
+
+    container.addEventListener("input", e => {
+        const input = e.target.closest("input[data-section][data-kind]");
+        if (!input) return;
+        const sectionIndex = Number(input.dataset.section);
+        const kind = input.dataset.kind;
+        applyFirstValue(sectionIndex, kind, input);
+    });
+}
+
+function AddSectionMeasurement(sectionIndex, kind, input) {
+    if (!input) return;
+    const value = ParseNumericValue(input.value);
+    if (!Number.isFinite(value) || value <= 0) return;
+    EnsureSectionMeasurements();
+    const unit = GetSelectedUnitLabel();
+    const valueMm = value * UnitToMm(unit);
+    windowModel.sectionMeasurements[sectionIndex][kind].push(valueMm);
+    MarkSectionEdited(sectionIndex);
+    input.value = "";
+    if (kind === "widths") {
+        windowModel.sectionDrafts[sectionIndex].width = Number.NaN;
+    } else {
+        windowModel.sectionDrafts[sectionIndex].height = Number.NaN;
+    }
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function RemoveSectionMeasurement(sectionIndex, kind, index) {
+    EnsureSectionMeasurements();
+    windowModel.sectionMeasurements[sectionIndex][kind].splice(index, 1);
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function AddMeasurement(kind, input) {
+    if (!input) return;
+    const value = ParseNumericValue(input.value);
+    if (!Number.isFinite(value) || value <= 0) return;
+    const unit = GetSelectedUnitLabel();
+    const valueMm = value * UnitToMm(unit);
+    windowModel.measurements[kind].push(valueMm);
+    input.value = "";
+    EnsureMeasurementDrafts();
+    if (kind === "widths") {
+        windowModel.measurementDrafts.width = Number.NaN;
+    } else {
+        windowModel.measurementDrafts.height = Number.NaN;
+    }
+    const listId = kind === "widths" ? "widthList" : "heightList";
+    RenderMeasurementList(kind, listId);
+    const flatGrid = document.querySelector("#measureControls .measure-grid");
+    if (flatGrid) {
+        const hasAny = windowModel.measurements.widths.length > 0 || windowModel.measurements.heights.length > 0;
+        flatGrid.classList.toggle("has-values", hasAny);
+    }
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function RemoveMeasurement(kind, index) {
+    windowModel.measurements[kind].splice(index, 1);
+    const listId = kind === "widths" ? "widthList" : "heightList";
+    RenderMeasurementList(kind, listId);
+    const flatGrid = document.querySelector("#measureControls .measure-grid");
+    if (flatGrid) {
+        const hasAny = windowModel.measurements.widths.length > 0 || windowModel.measurements.heights.length > 0;
+        flatGrid.classList.toggle("has-values", hasAny);
+    }
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function GetMinMeasurement(kind) {
+    const values = windowModel.measurements[kind];
+    if (!values.length) return Number.NaN;
+    return Math.min(...values);
+}
+
+function GetMinValue(values) {
+    if (!Array.isArray(values) || !values.length) return Number.NaN;
+    return Math.min(...values);
+}
+
+function GetMeasurementReference(values) {
+    const finiteValues = Array.isArray(values) ? values.filter(Number.isFinite).slice().sort((a, b) => a - b) : [];
+    if (!finiteValues.length) return Number.NaN;
+    const middle = Math.floor(finiteValues.length / 2);
+    if (finiteValues.length % 2 === 1) return finiteValues[middle];
+    return (finiteValues[middle - 1] + finiteValues[middle]) / 2;
+}
+
+function IsMeasurementOutOfRange(value, values, tolerance = 15) {
+    if (!Number.isFinite(value)) return false;
+    const finiteValues = Array.isArray(values) ? values.filter(Number.isFinite) : [];
+    if (finiteValues.length < 2) return false;
+    const reference = GetMeasurementReference(finiteValues);
+    if (!Number.isFinite(reference)) return false;
+    return Math.abs(value - reference) > tolerance;
+}
+
+function RenderMeasurements() {
+    RenderMeasurementList("widths", "widthList");
+    RenderMeasurementList("heights", "heightList");
+    const flatGrid = document.querySelector("#measureControls .measure-grid");
+    if (flatGrid) {
+        const hasAny = windowModel.measurements.widths.length > 0 || windowModel.measurements.heights.length > 0;
+        flatGrid.classList.toggle("has-values", hasAny);
+    }
+
+    EnsureSectionMeasurements();
+    RenderSectionMeasurementList(0, "widths",  "sectionLeftWidthList");
+    RenderSectionMeasurementList(0, "heights", "sectionLeftHeightList");
+    RenderSectionMeasurementList(1, "widths",  "sectionCenterWidthList");
+    RenderSectionMeasurementList(1, "heights", "sectionCenterHeightList");
+    RenderSectionMeasurementList(2, "widths",  "sectionRightWidthList");
+    RenderSectionMeasurementList(2, "heights", "sectionRightHeightList");
+
+    document.querySelectorAll(".section-measure-grid-inner").forEach((grid, index) => {
+        const section = windowModel.sectionMeasurements[index];
+        const hasAny = section.widths.length > 0 || section.heights.length > 0;
+        grid.classList.toggle("has-values", hasAny);
+    });
+}
+
+function RenderMeasurementList(kind, listId) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.innerHTML = "";
+    const values = windowModel.measurements[kind];
+    const min = values.length ? Math.min(...values) : null;
+    values.forEach((value, index) => {
+        const li = document.createElement("li");
+        li.classList.add("measure-item");
+        if (value === min) li.classList.add("min");
+        if (IsMeasurementOutOfRange(value, values)) {
+            li.classList.add("out-of-range");
+        }
+        li.textContent = FormatMeasurement(value);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.index = String(index);
+        btn.textContent = "×";
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
+}
+
+function RenderSectionMeasurementList(sectionIndex, kind, listId) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.innerHTML = "";
+    EnsureSectionMeasurements();
+    const values = windowModel.sectionMeasurements[sectionIndex][kind];
+    const min = values.length ? Math.min(...values) : null;
+    values.forEach((value, index) => {
+        const li = document.createElement("li");
+        li.classList.add("measure-item");
+        if (value === min) li.classList.add("min");
+        if (IsMeasurementOutOfRange(value, values)) {
+            li.classList.add("out-of-range");
+        }
+        li.textContent = FormatMeasurement(value);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "×";
+        btn.addEventListener("click", () => RemoveSectionMeasurement(sectionIndex, kind, index));
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
+}
+
+function ToggleTemplateControls() {
+    const template = windowModel.template || "flat";
+    document.documentElement.classList.toggle("template-bay", template === "bay" || template === "bow");
+    document.querySelectorAll(".sections-only").forEach(el => {
+        el.classList.toggle("hidden", template === "flat");
+    });
+    document.querySelectorAll(".flat-only").forEach(el => {
+        el.classList.toggle("hidden", template !== "flat");
+    });
+    const measureControls = document.getElementById("measureControls");
+    if (measureControls) {
+        measureControls.classList.remove("flat-only");
+        measureControls.classList.toggle("bay-only", template !== "flat");
+    }
+    UpdateSectionSelector();
+}
+
+function BindSectionToggleButtons() {
+    document.querySelectorAll(".section-toggle-btn[data-section-toggle]").forEach(button => {
+        button.addEventListener("click", () => {
+            const index = Number(button.dataset.sectionToggle);
+            if (!Number.isFinite(index)) return;
+            if (index === 1) return;
+            windowModel.sectionEnabled[index] = !windowModel.sectionEnabled[index];
+            UpdateSectionToggleButtons();
+            UpdateSectionSelector();
+            UpdateWindow();
+        });
+    });
+    UpdateSectionToggleButtons();
+}
+
+function UpdateSectionToggleButtons() {
+    const enabled = windowModel.sectionEnabled || [true, true, true];
+    enabled[1] = true;
+    document.querySelectorAll(".section-toggle-btn[data-section-toggle]").forEach(button => {
+        const index = Number(button.dataset.sectionToggle);
+        const isEnabled = enabled[index];
+        const labelKey = index === 0
+            ? (isEnabled ? "remove_left_sec" : "restore_left_sec")
+            : (isEnabled ? "remove_right_sec" : "restore_right_sec");
+        const label = translate(labelKey);
+        button.textContent = isEnabled ? "×" : "+";
+        button.setAttribute("title", label);
+        button.setAttribute("aria-label", label);
+    });
+}
+
+function BindSectionSelector() {
+    const select = document.getElementById("sectionSelect");
+    if (!select) return;
+    const saved = localStorage.getItem("sectionSelect");
+    if (saved === "0" || saved === "1" || saved === "2") {
+        select.value = saved;
+    }
+    select.addEventListener("change", () => {
+        localStorage.setItem("sectionSelect", select.value);
+        UpdateSectionSelector();
+    });
+    window.addEventListener("resize", () => {
+        UpdateSectionSelector();
+    });
+}
+
+function UpdateSectionSelector() {
+    const select = document.getElementById("sectionSelect");
+    if (!select) return;
+    const isMobile = IsMobileLayout();
+    const sections = document.querySelectorAll(".section-measure[data-section-index]");
+    const enabled = windowModel.sectionEnabled || [true, true, true];
+    enabled[1] = true;
+    const options = select.querySelectorAll("option");
+    options.forEach(option => {
+        const index = Number(option.value);
+        option.disabled = !enabled[index];
+    });
+    if (enabled.every(val => !val)) {
+        windowModel.sectionEnabled = [true, true, true];
+    }
+    if (!enabled[Number(select.value)]) {
+        const firstEnabled = enabled.findIndex(val => val);
+        if (firstEnabled >= 0) {
+            select.value = String(firstEnabled);
+        }
+    }
+    if (!isMobile) {
+        sections.forEach(section => section.removeAttribute("data-mobile-hidden"));
+        sections.forEach(section => {
+            const index = Number(section.getAttribute("data-section-index"));
+            const disabled = !enabled[index];
+            if (disabled) {
+                section.setAttribute("data-section-disabled", "true");
+            } else {
+                section.removeAttribute("data-section-disabled");
+            }
+        });
+        return;
+    }
+    const selected = select.value;
+    sections.forEach(section => {
+        const index = section.getAttribute("data-section-index");
+        const disabled = !enabled[Number(index)];
+        const hide = index !== selected || disabled;
+        if (hide) {
+            section.setAttribute("data-mobile-hidden", "true");
+        } else {
+            section.removeAttribute("data-mobile-hidden");
+        }
+        if (disabled) {
+            section.setAttribute("data-section-disabled", "true");
+        } else {
+            section.removeAttribute("data-section-disabled");
+        }
+    });
+}
+
+function RenderSpecification() {
+    const tbody = document.getElementById("specTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const widthLabel = `${translate("spec_width")} (mm)`;
+    const heightLabel = `${translate("spec_height")} (mm)`;
+    const ths = document.querySelectorAll("#specTable thead th");
+    if (ths.length >= 3) {
+        ths[1].textContent = widthLabel;
+        ths[2].textContent = heightLabel;
+    }
+
+    const rows = [];
+    if (windowModel.template === "flat") {
+        if (Number.isFinite(windowModel.width) || Number.isFinite(windowModel.height)) {
+            rows.push({
+                label: translate("spec_overall"),
+                width: Number.isFinite(windowModel.width) ? String(Math.round(windowModel.width)) : "—",
+                height: Number.isFinite(windowModel.height) ? String(Math.round(windowModel.height)) : "—"
+            });
+        }
+    } else {
+        const labels = [
+            translate("left_sec"),
+            translate("central_sec"),
+            translate("right_sec")
+        ];
+        const enabled = windowModel.sectionEnabled || [true, true, true];
+        enabled[1] = true;
+        const sections = new Map((windowModel.sections || []).map(section => [section.index, section]));
+        labels.forEach((label, index) => {
+            if (!enabled[index]) return;
+            const section = sections.get(index);
+            rows.push({
+                label,
+                width: Number.isFinite(section?.width) ? String(Math.round(section.width)) : "—",
+                height: Number.isFinite(section?.height) ? String(Math.round(section.height)) : "—"
+            });
+        });
+        if (Number.isFinite(windowModel.width) || Number.isFinite(windowModel.height)) {
+            rows.push({
+                label: translate("spec_overall"),
+                width: Number.isFinite(windowModel.width) ? String(Math.round(windowModel.width)) : "—",
+                height: Number.isFinite(windowModel.height) ? String(Math.round(windowModel.height)) : "—"
+            });
+        }
+    }
+
+    rows.forEach(({label, width, height}) => {
+        const tr = document.createElement("tr");
+        [label, width, height].forEach(text => {
+            const td = document.createElement("td");
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+}
+
+/*function ValidateDimensions() {
     const rules = validationRules.window;
-    ClearValidationErrors(globalErrorFields);
+    ClearValidationErrors(["width", "height"]);
 
     let valid = true;
 
@@ -743,375 +1041,209 @@ function ValidateDimensions() {
         SetFieldWarning("height", "warning.nearMaxHeight", {max: rules.maxHeight}, {whyKey: "why.nearLimit"});
     }
 
-    if (Number.isNaN(windowModel.cntBays) || windowModel.cntBays < rules.minCntBays) {
-        if (ShouldShowFieldError("cnt_bays")) {
-            SetFieldError("cnt_bays", "error.minCntBays", {min: rules.minCntBays}, {whyKey: "why.hardLimit"});
-        }
-        valid = false;
-    } else if (windowModel.cntBays > rules.maxCntBays) {
-        if (ShouldShowFieldError("cnt_bays")) {
-            SetFieldError("cnt_bays", "error.maxCntBays", {max: rules.maxCntBays}, {whyKey: "why.hardLimit"});
-        }
-        valid = false;
-    } else if (ShouldShowFieldError("cnt_bays") && windowModel.cntBays >= rules.maxCntBays - 1) {
-        SetFieldWarning("cnt_bays", "warning.nearMaxCntBays", {max: rules.maxCntBays}, {whyKey: "why.nearLimit"});
-    }
-
     return valid;
-}
-
-function ValidateBayConstraints() {
-    ClearValidationErrors(bayErrorFields);
-    if (!windowModel.bays.length) return true;
-
-    if (windowModel.selectedBay === null) return true;
-    const selected = windowModel.selectedBay;
-    const bay = windowModel.bays[selected];
-    if (!bay) return true;
-
-    const limits = GetOpeningLimits(bay.opening);
-    const profileByOpening = GetBayStructureProfile(bay.opening);
-    const bayWidthTouched  = ShouldShowFieldError("bayWidth");
-    const bayHeightTouched = ShouldShowFieldError("bayHeight");
-
-    if (bay.width < limits.minWidth) {
-        if (bayWidthTouched) {
-            SetFieldError("bayWidth", "error.minBayWidth", {min: limits.minWidth, type: translate(bay.opening)}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-    if (bay.width > limits.maxWidth) {
-        if (bayWidthTouched) {
-            SetFieldError("bayWidth", "error.maxBayWidth", {max: limits.maxWidth, type: translate(bay.opening)}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-
-    if (bay.height < limits.minHeight) {
-        if (bayHeightTouched) {
-            SetFieldError("bayHeight", "error.minBayHeight", {min: limits.minHeight, type: translate(bay.opening)}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-    if (bay.height > limits.maxHeight) {
-        if (bayHeightTouched) {
-            SetFieldError("bayHeight", "error.maxBayHeight", {max: limits.maxHeight, type: translate(bay.opening)}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-
-    if (profileByOpening.verticalMullion < validationRules.mullion.min ||
-        profileByOpening.verticalMullion > validationRules.mullion.max ||
-        profileByOpening.horizontalMullion < validationRules.mullion.min ||
-        profileByOpening.horizontalMullion > validationRules.mullion.max) {
-        if (bayWidthTouched) {
-            SetFieldError("bayWidth", "error.mullionRange", {min: validationRules.mullion.min, max: validationRules.mullion.max}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-
-    const glassW = Math.max(0, bay.glass.width);
-    const glassH = Math.max(0, bay.glass.height);
-    const glassAreaM2 = (glassW * glassH) / 1000000;
-    const glassSafety = GetGlassSafetyLimit(bay.opening);
-
-    if (Math.max(glassW, glassH) > glassSafety.maxEdge) {
-        const targetField = glassW >= glassH ? "bayWidth" : "bayHeight";
-        if (ShouldShowFieldError(targetField)) {
-            SetFieldError(targetField, "error.glassMaxEdge", {max: glassSafety.maxEdge}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-
-    if (glassAreaM2 > glassSafety.maxAreaM2) {
-        if (bayWidthTouched) {
-            SetFieldError("bayWidth", "error.glassMaxArea", {max: glassSafety.maxAreaM2.toFixed(2)}, {whyKey: "why.hardLimit"});
-        }
-        return false;
-    }
-
-    if (bayWidthTouched && IsNearUpperLimit(bay.width, limits.maxWidth)) {
-        SetWarningIfEmpty("bayWidth", "warning.nearMaxBayWidth", {max: limits.maxWidth}, {whyKey: "why.nearLimit"});
-    }
-    if (bayHeightTouched && IsNearUpperLimit(bay.height, limits.maxHeight)) {
-        SetWarningIfEmpty("bayHeight", "warning.nearMaxBayHeight", {max: limits.maxHeight}, {whyKey: "why.nearLimit"});
-    }
-    if (bayWidthTouched || bayHeightTouched) {
-        const maxGlassEdge = Math.max(glassW, glassH);
-        const targetField = glassW >= glassH ? "bayWidth" : "bayHeight";
-        if (ShouldShowFieldError(targetField) && IsNearUpperLimit(maxGlassEdge, glassSafety.maxEdge)) {
-            SetWarningIfEmpty(targetField, "warning.nearGlassEdge", {max: glassSafety.maxEdge}, {whyKey: "why.nearLimit"});
-        }
-        if (glassAreaM2 <= glassSafety.maxAreaM2 && glassAreaM2 >= glassSafety.maxAreaM2 * 0.9) {
-            const areaField = bayWidthTouched ? "bayWidth" : "bayHeight";
-            SetWarningIfEmpty(areaField, "warning.nearGlassArea", {max: glassSafety.maxAreaM2.toFixed(2)}, {whyKey: "why.nearLimit"});
-        }
-    }
-
-    return true;
-}
-
-function SyncronizeBays() {
-
-    const cnt      = windowModel.cntBays;
-    const width    = windowModel.width  - profile.outerFrame.left - profile.outerFrame.right;
-    const height   = windowModel.height - profile.outerFrame.top  - profile.outerFrame.bottom;
-    const oldBays  = windowModel.bays;
-    const tempBays = [];
-    
-    //console.log(`[SyncronizeBays] profile.outerFrame: left=${profile.outerFrame.left}, right=${profile.outerFrame.right}, top=${profile.outerFrame.top}, bottom=${profile.outerFrame.bottom}`);
-    
-    for (let i = 0; i < cnt; i++) {
-        const prev = oldBays[i];
-        tempBays.push({
-            opening: prev?.opening || "fixed",
-            openingDirection: prev?.openingDirection || ""
-        });
-    }
-    windowModel.bays = tempBays;
-
-    const totalMullions = GetTotalMullionWidth();
-    const totalOverlap  = GetTotalOverlapAllowance();
-    const bayWidth  = (width - totalMullions + totalOverlap) / cnt;
-
-    const firstOpeningProfile = GetBayStructureProfile(tempBays[0]?.opening || "fixed");
-    let currentX = profile.outerFrame.left - firstOpeningProfile.sashOverlap;
-
-    windowModel.bays = [];
-
-    for (let i = 0; i < windowModel.cntBays; i++) {
-
-        const bay = {};
-        const openingProfile = GetBayStructureProfile(tempBays[i].opening);
-
-        // Bay Outer Frame
-        bay.x = currentX;
-        bay.y = profile.outerFrame.top - openingProfile.sashOverlap;
-        bay.width  = bayWidth;
-        bay.height = height + 2 * openingProfile.sashOverlap;
-        bay.opening = tempBays[i].opening;
-        bay.openingDirection = tempBays[i].openingDirection;
-
-        // Bay Inner Frame
-        bay.frame = {x: bay.x + profile.bayFrame.left, y: bay.y + profile.bayFrame.top,
-            width:  bay.width  - profile.bayFrame.left - profile.bayFrame.right,
-            height: bay.height - profile.bayFrame.top  - profile.bayFrame.bottom
-        };
-
-        // Sash (overlaps outward)
-        const overlap = openingProfile.sashOverlap;
-        bay.sash = {x: bay.x + overlap, y: bay.y + overlap,
-            width: bay.width - 2 * overlap, height: bay.height - 2 * overlap
-        };
-
-        // Glass (inside sash)
-        const inset = openingProfile.glassInset;
-        bay.glassInset = {
-            x: bay.frame.x - inset, y: bay.frame.y - inset,
-            width:  bay.width  - profile.bayFrame.left - profile.bayFrame.right  + 2 * inset,
-            height: bay.height - profile.bayFrame.top  - profile.bayFrame.bottom + 2 * inset
-        };
-
-        // Clear Glass
-        bay.glass = {
-            x: bay.frame.x, y: bay.frame.y,
-            width:  bay.width  - profile.bayFrame.left - profile.bayFrame.right,
-            height: bay.height - profile.bayFrame.top  - profile.bayFrame.bottom
-        };
-
-        windowModel.bays.push(bay);
-        //console.log(`[SyncronizeBays] bay ${i + 1}: x=${bay.x}, y=${bay.y}, width=${bay.width}, height=${bay.height}`);
-
-        if (i < windowModel.cntBays - 1) {
-            const nextProfile = GetBayStructureProfile(tempBays[i + 1].opening);
-            //const interMullion = Math.round((openingProfile.verticalMullion + nextProfile.verticalMullion) / 2);
-            const interMullion = (openingProfile.verticalMullion + nextProfile.verticalMullion) / 2;
-            currentX += bayWidth + interMullion - (overlap + nextProfile.sashOverlap);
-        }
-    }
-
-    RecalcBays();
-}
+}*/
 
 function DrawWindow() {
     const NS = "http://www.w3.org/2000/svg";
-    const dimOffset     = 150;
-    const labelOffset   = 50;
-    const dimStroke     = 3;
-    const arrowHeadSize = 12;
-    const addASHeight   = 50;
+    const dimOffset = 110;
+    const labelOffset = 35;
+    const dimStroke = 3.5;
+    const arrowHeadSize = 10;
 
-    const uniqueHeights = [...new Set(windowModel.bays.map(bay => bay.height))].sort((a, b) => a - b);
-    const rightRequiredPad = (uniqueHeights.length + 2) * (dimOffset + labelOffset);
-    const topRequiredPad = dimOffset + 2 * labelOffset + (isPrintLayoutMode ? 80 : 0);
-
-    let padLeft;
-    let padRight;
-    let padTop;
-    let padBottom;
-    if (isPrintLayoutMode) {
-        padLeft = 80;
-        padRight = rightRequiredPad;
-        padTop = topRequiredPad;
-        padBottom = 80;
-    } else {
-        const horizontalPad = Math.max(40, rightRequiredPad);
-        const verticalPad = topRequiredPad;
-        padLeft = horizontalPad;
-        padRight = horizontalPad;
-        padTop = verticalPad;
-        padBottom = verticalPad;
+    const W = windowModel.width;
+    const H = windowModel.height;
+    const template = windowModel.template || "flat";
+    if (template === "flat") {
+        if (!Number.isFinite(windowModel.width) || !Number.isFinite(windowModel.height)) {
+            drawingDiv.classList.remove("active");
+            drawingDiv.style.display = "none";
+            return;
+        }
+        EnsureSections();
     }
 
     const drawingDiv = document.getElementById("drawing");
-    document.getElementById("drawing").classList.add("active");
+    if (template !== "flat" && (!Array.isArray(windowModel.sections) || windowModel.sections.length === 0)) {
+        drawingDiv.classList.remove("active");
+        drawingDiv.style.display = "none";
+        return;
+    }
+
+    drawingDiv.classList.add("active");
     drawingDiv.style.display = "block";
 
     const svg = document.getElementById("windowSvg");
-    svg.setAttribute(
-        "viewBox",
-        `${-padLeft} ${-padTop} ${windowModel.width + padLeft + padRight} ${windowModel.height + padTop + padBottom}`
-    );
-    svg.style.width  = "100%";
-    svg.style.height = "100%";
-    svg.style.background = cadTheme.background;
-
-    // Clear all old drawing elements
     const oldDrawing = svg.querySelector("#drawingGroup");
     if (oldDrawing) oldDrawing.remove();
 
     EnsureCadDefs(svg, NS);
     const drawingGroup = CreateNewElement(NS, svg, "g", {id: "drawingGroup"});
-    CreateNewElement(NS, drawingGroup, "rect", {class: "cadGridBackground",
-        x: -padLeft,
-        y: -padTop,
-        width: windowModel.width + padLeft + padRight,
-        height: windowModel.height + padTop + padBottom,
+
+    const sectionsData = template === "flat"
+        ? [{width: W, height: H}]
+        : windowModel.sections.map(section => ({width: section.width, height: section.height}));
+
+    const sections = [];
+    let cursorX = 0;
+    sectionsData.forEach((section, index) => {
+        const width  = Number.isFinite(section.width) && section.width > 0 ? section.width : 0;
+        const height = Number.isFinite(section.height) && section.height > 0 ? section.height : Number.NaN;
+        const x0 = cursorX;
+        const x1 = cursorX + width;
+        cursorX = x1;
+        sections.push({
+            label: ["A", "B", "C"][index] || "A",
+            x0,
+            x1,
+            width,
+            height,
+            type: template === "flat" ? "rect" : (index === 1 ? "rect" : "para")
+        });
+    });
+
+    const drawnSections = sections.filter(section => section.width > 0 && Number.isFinite(section.height));
+    if (!drawnSections.length) {
+        return;
+    }
+
+    const maxHeight = Math.max(...drawnSections.map(section => section.height));
+    const maxRight  = Math.max(...drawnSections.map(section => section.x1));
+    //const skewY = template === "bay" ? Math.min(40, maxHeight * 0.2) : template === "bow" ? Math.min(20, maxHeight * 0.15) : 0;
+    const skewY = template === "bay" ? 800 : template === "bow" ? 360 : 0;
+
+    const rightArrowX = maxRight + dimOffset;
+    const minX = 0 - labelOffset;
+    const maxX = rightArrowX + labelOffset * 2;
+    const minY = -dimOffset - labelOffset * 2;
+    const maxY = maxHeight + skewY + dimOffset;
+    const printPad = isPrintLayoutMode ? 100 : 0;
+
+    svg.setAttribute(
+        "viewBox",
+        `${minX - 2 * printPad} ${minY - 2 * printPad} ${maxX - minX + printPad * 3} ${maxY - minY + printPad * 3}`
+    );
+    svg.style.width  = "100%";
+    svg.style.height = "100%";
+    svg.style.background = cadTheme.background;
+
+    // Background for Drawing
+    CreateNewElement(NS, drawingGroup, "rect", {
+        class: "cadGridBackground",
+        x: minX - printPad,
+        y: minY - printPad,
+        width:  maxX - minX + printPad * 2,
+        height: maxY - minY + printPad * 2,
         fill: "url(#cadGridMajor)"
     });
 
-    // Outer Full Window Frame
-    CreateNewElement(NS, drawingGroup, "rect", {class: "windowFrame",
-        x: 0, y: 0, width: windowModel.width, height: windowModel.height,
-        fill: "none", stroke: cadTheme.frameMain, "stroke-width": "12"
-    });
-    // Inner Full Window Frame
-    CreateNewElement(NS, drawingGroup, "rect", {class: "windowFrame",
-        x: profile.outerFrame.left, y: profile.outerFrame.top,
-        width: (windowModel.width - profile.outerFrame.left - profile.outerFrame.right),
-        height: (windowModel.height - profile.outerFrame.top - profile.outerFrame.bottom),
-        fill: "none", stroke: cadTheme.frameSecondary, "stroke-width": "4"
-    });
-    // Mullions
-    windowModel.bays.forEach((bay, index) => {
-        if (index === 0) return;
-        const interIndex = index - 1;
-        const mullionWidth = GetInterBayMullionWidth(interIndex);
-        const rightProfile = GetBayStructureProfile(bay.opening);
-        const mullionX = bay.x + rightProfile.sashOverlap - mullionWidth;
-        const openingY = profile.outerFrame.top;
-        const openingHeight = windowModel.height - profile.outerFrame.top - profile.outerFrame.bottom;
-        CreateNewElement(NS, drawingGroup, "rect", {class: "mullion",
-            x: mullionX, y: openingY,
-            width: mullionWidth, height: openingHeight,
-            fill: "none", stroke: cadTheme.mullion, "stroke-width": "4"});
-    });
-    // Bay Outer Frame
-    windowModel.bays.forEach((bay, index) => {
-        CreateNewElement(NS, drawingGroup, "rect", {class: "bay",
-            x: bay.x, y: bay.y,
-            width: bay.width, height: bay.height,
-            fill: "none", stroke: cadTheme.frameMain, "stroke-width": 10});
-    });
-    // Bay Inner Frame (optional secondary line):
-    // windowModel.bays.forEach(bay => {
-    //     CreateNewElement(NS, drawingGroup, "rect", {class: "bay",
-    //         x: bay.frame.x, y: bay.frame.y,
-    //         width: bay.frame.width, height: bay.frame.height,
-    //         fill: "none", stroke: cadTheme.frameMain, "stroke-width": 10});
-    // });
-    // Bay Sash
-    windowModel.bays.forEach(bay => {
-        CreateNewElement(NS, drawingGroup, "rect", {class: "baySash",
-            x: bay.sash.x, y: bay.sash.y,
-            width: bay.sash.width, height: bay.sash.height,
-            fill: "none", stroke: cadTheme.frameSecondary, "stroke-width": 2});
-    });
-    // Glass inset
-    windowModel.bays.forEach(bay => {
-        CreateNewElement(NS, drawingGroup, "rect", {class: "glassInset",
-            x: bay.glassInset.x, y: bay.glassInset.y,
-            width: bay.glassInset.width, height: bay.glassInset.height,
-            fill: "none", stroke: cadTheme.glassStroke, "stroke-width": 3});
-    });
-    // Glass
-    windowModel.bays.forEach((bay, index) => {
-        CreateNewElement(NS, drawingGroup, "rect", {class: "glass",
-           x: bay.glass.x, y: bay.glass.y,
-            width: bay.glass.width, height: bay.glass.height,
-            fill: cadTheme.glassFill,
-            stroke: windowModel.selectedBay === index ? cadTheme.selected : cadTheme.frameMain,
-            "stroke-width": windowModel.selectedBay === index ? 12 : 10,
-            cursor: "pointer"}).addEventListener("click", () => SelectBay(index))
+    // All Window Sections
+    sections.forEach((section, index) => {
+        if (section.width <= 0 || !Number.isFinite(section.height)) return;
+        // Central Section
+        if (section.type === "rect") {
+            CreateNewElement(NS, drawingGroup, "rect", {
+                class: "windowFrame",
+                x: section.x0,
+                y: 0,
+                width: section.width,
+                height: section.height,
+                fill: "none",
+                stroke: cadTheme.frameMain,
+                "stroke-width": 6
+            });
+            return;
+        }
 
-        DrawOpeningSymbol(NS, drawingGroup, bay);
+        const isLeft = index === 0;
+        const yLeftTop = isLeft ? skewY : 0;
+        const yRightTop = isLeft ? 0 : skewY;
+        const yLeftBottom = yLeftTop + section.height;
+        const yRightBottom = yRightTop + section.height;
+        const points = [
+            `${section.x0},${yLeftTop}`,
+            `${section.x1},${yRightTop}`,
+            `${section.x1},${yRightBottom}`,
+            `${section.x0},${yLeftBottom}`
+        ].join(" ");
+        // Left and Right Sections
+        CreateNewElement(NS, drawingGroup, "polygon", {
+            class: "windowFrame",
+            points,
+            fill: "none",
+            stroke: cadTheme.frameMain,
+            "stroke-width": 6
+        });
     });
-        
-    // Arrow marker setup
+
     const marker = document.getElementById("arrow");
-    marker.setAttribute("markerWidth",  arrowHeadSize);
+    marker.setAttribute("markerWidth", arrowHeadSize);
     marker.setAttribute("markerHeight", arrowHeadSize);
     marker.setAttribute("refX", arrowHeadSize);
     marker.setAttribute("refY", arrowHeadSize / 2);
     marker.querySelector("path").setAttribute("d", `M0,0 L${arrowHeadSize},${arrowHeadSize / 2} L0,${arrowHeadSize} Z`);
     marker.querySelector("path").setAttribute("fill", cadTheme.dimension);
 
-    // Full-width Arrows
-    // Horizontal Arrow (Window Width)
-    CreateArrow(NS, drawingGroup, "H", 0, -(dimOffset + labelOffset), windowModel.width, -(dimOffset + labelOffset), windowModel.width / 2, -(dimOffset + 2 * labelOffset), windowModel.width);
-    // Arrow Stoppers
-    CreateNewElement(NS, drawingGroup, "line", {x1: 0, y1: 0, x2: 0, y2: -(dimOffset + labelOffset + addASHeight), stroke: cadTheme.dimension, "stroke-width": dimStroke});
-    CreateNewElement(NS, drawingGroup, "line", {x1: windowModel.width, y1: 0, x2: windowModel.width, y2: -(dimOffset + labelOffset + addASHeight), stroke: cadTheme.dimension, "stroke-width": dimStroke});
-    // Vertical arrow (Window Height)
-    const fullHeightLabelX = windowModel.width + (uniqueHeights.length + 1) * (dimOffset / 2 + labelOffset) + labelOffset / 6;
-    const fullHeightArrowX = fullHeightLabelX - labelOffset;
-    const fullHeightStopperEndX = fullHeightArrowX + addASHeight;
-    CreateArrow(NS, drawingGroup, "V", fullHeightArrowX, 0, fullHeightArrowX, windowModel.height, fullHeightLabelX, windowModel.height / 2, windowModel.height);
-    // Arrow Stoppers
-    CreateNewElement(NS, drawingGroup, "line", {x1: windowModel.width, y1: 0, x2: fullHeightStopperEndX, y2: 0, stroke: cadTheme.dimension, "stroke-width": dimStroke});
-    CreateNewElement(NS, drawingGroup, "line", {x1: windowModel.width, y1: windowModel.height, x2: fullHeightStopperEndX, y2: windowModel.height, stroke: cadTheme.dimension, "stroke-width": dimStroke});
-    // Width Window Panels Arrows below full-width Arrow
-    windowModel.bays.forEach((bay) => {
-        const x1 = bay.x;
-        const x2 = bay.x + bay.width;
-        CreateArrow(NS, drawingGroup, "H", x1, -dimOffset / 2, x2, -dimOffset / 2, (x1 + x2) / 2, -(dimOffset / 2 + labelOffset), Math.round(bay.width));
-        CreateNewElement(NS, drawingGroup, "line", {x1: x1, y1: bay.y, x2: x1, y2: -(dimOffset / 2 + addASHeight), stroke: cadTheme.dimension, "stroke-width": dimStroke});
-        CreateNewElement(NS, drawingGroup, "line", {x1: x2, y1: bay.y, x2: x2, y2: -(dimOffset / 2 + addASHeight), stroke: cadTheme.dimension, "stroke-width": dimStroke});
-    });
-    // Height Window Panels Arrow before the full-height Arrow
-    uniqueHeights.forEach((h, index) => {
-        let k = 0;
-        const arrowX = windowModel.width + (index + 1) * (dimOffset / 2 + labelOffset) + labelOffset / 6;
-        const stopperEndX = arrowX - labelOffset + addASHeight;
-        windowModel.bays.forEach((bay) => {
-            if (bay.height === h) {
-                k++;
-                const x1 = bay.x + bay.width;
-                const x2 = stopperEndX;
-                const y1 = bay.y;
-                const y2 = bay.y + bay.height;
-                if (k === 1) {
-                    const x = arrowX;
-                    const y = bay.y + bay.height / 2;
-                    CreateArrow(NS, drawingGroup, "V", x - labelOffset, y1, x - labelOffset, y2, x, y, Math.round(bay.height));
-                }
-                CreateNewElement(NS, drawingGroup, "line", {x1: x1, y1: y1, x2: x2, y2: y1, stroke: cadTheme.dimension, "stroke-width": dimStroke});
-                CreateNewElement(NS, drawingGroup, "line", {x1: x1, y1: y2, x2: x2, y2: y2, stroke: cadTheme.dimension, "stroke-width": dimStroke});
-            }
-        });
+    // Horizontal Arrows
+    sections.forEach((section, index) => {
+        if (section.width <= 0 || !Number.isFinite(section.height)) return;
+        const x1 = section.x0;
+        const x2 = section.x1;
+        const isLeft = index === 0;
+        const isRight = index === 2;
+        const y1 = isLeft ? skewY : 0;
+        const y2 = isLeft ? 0 : (isRight ? skewY : 0);
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        const nx = 0;
+        const ny = 1;
+        const ox = nx * dimOffset;
+        const oy = ny * dimOffset;
+        const arrowY1 = y1 - oy;
+        const arrowY2 = y2 - oy;
+        const stopperPad = dimStroke * 8;
+        CreateArrow(
+            NS,
+            drawingGroup,
+            "H",
+            x1 + ox, arrowY1,
+            x2 + ox, arrowY2,
+            midX + ox, midY - oy - labelOffset,
+            Math.round(x2 - x1)
+        );
+        CreateNewElement(NS, drawingGroup, "line", {x1: x1, y1: y1, x2: x1, y2: arrowY1 - stopperPad, stroke: cadTheme.dimension, "stroke-width": dimStroke});
+        CreateNewElement(NS, drawingGroup, "line", {x1: x2, y1: y2, x2: x2, y2: arrowY2 - stopperPad, stroke: cadTheme.dimension, "stroke-width": dimStroke});
     });
 
-    RenderSpecification();
+    // Vertical Arrows
+    sections.forEach((section, index) => {
+        if (section.width <= 0 || !Number.isFinite(section.height)) return;
+        const isLeft = index === 0;
+        const isCenter = index === 1;
+        const isRight = index === 2;
+        const arrowX = isLeft
+            ? section.x0 - dimOffset
+            : isCenter
+                ? (section.x0 + section.x1) / 2
+                : section.x1 + dimOffset;
+        const yTop = isLeft ? skewY : (isRight ? skewY : 0);
+        const yBottom = yTop + section.height;
+        CreateArrow(
+            NS,
+            drawingGroup,
+            "V",
+            arrowX, yTop,
+            arrowX, yBottom,
+            arrowX + (isLeft ? -labelOffset : labelOffset),
+            (yTop + yBottom) / 2,
+            Math.round(section.height)
+        );
+        const frameX = isLeft ? section.x0 : (isRight ? section.x1 : section.x0);
+        const stopperPad = dimStroke * 8;
+        const padDir = arrowX >= frameX ? 1 : -1;
+        CreateNewElement(NS, drawingGroup, "line", {x1: frameX, y1: yTop, x2: arrowX + padDir * stopperPad, y2: yTop, stroke: cadTheme.dimension, "stroke-width": dimStroke});
+        CreateNewElement(NS, drawingGroup, "line", {x1: frameX, y1: yBottom, x2: arrowX + padDir * stopperPad, y2: yBottom, stroke: cadTheme.dimension, "stroke-width": dimStroke});
+    }); 
 }
 
 function PrintWindow() {
@@ -1136,103 +1268,25 @@ function CreateNewElement(NS, parent, name, attributes = {}, textContent = null)
 
 function CreateArrow(NS, parent, direction, x1, y1, x2, y2, x, y, label) {
     const stroke = cadTheme.dimension;
-    const strokeWidth = 4;
-    const fontSize = 70;
+    const strokeWidth = 3.5;
+    const fontSize = 80;
     const fill = cadTheme.dimension;
 
     CreateNewElement(NS, parent, "line", { x1: x1, y1: y1, x2: x2, y2: y2,
         stroke: stroke, "stroke-width": strokeWidth, "marker-start": "url(#arrow)", "marker-end": "url(#arrow)"
     });
-    
-    let labelAttrs = { x: x, y: y,
-        "font-size": fontSize, fill: fill, "text-anchor": "middle", "dominant-baseline": "middle"
-    };
+
+    let labelAttrs = {x: x, y: y, "font-size": fontSize, fill: fill, "text-anchor": "middle", "dominant-baseline": "middle"};
 
     if (direction === "V") { labelAttrs["transform"] = `rotate(-90 ${x} ${y})`; }
+    if (direction === "H" && Math.abs(y2 - y1) > 0.01) {
+        const angle = Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
+        labelAttrs["transform"] = `rotate(${angle} ${x} ${y})`;
+    }
     labelAttrs["cursor"] = "pointer";
     CreateNewElement(NS, parent, "text", labelAttrs, `${Math.round(label)} mm`);
 }
 
-function SelectBay(index) {
-    windowModel.selectedBay = index;
-    showBayControls();
-    RecalcBays();
-    DrawWindow();
-    ValidateBayConstraints();
-}
-
-function showBayControls() {
-    const bay = windowModel.bays[windowModel.selectedBay];
-    if (!bay) return;
-    document.getElementById("bayControls").hidden = (windowModel.selectedBay === null);
-    document.getElementById("bayWidth").value     = Math.round(bay.width);
-    document.getElementById("bayHeight").value    = Math.round(bay.height);
-    document.getElementById("openingType").value  = bay.opening;
-    UpdateOpeningDirectionControl();
-    document.getElementById("openingDirection").value = bay.openingDirection || "";
-    const locked = document.getElementById("identical_bays").checked;
-    document.getElementById("identicalBayWidth").classList.toggle("hidden",  locked);
-    document.getElementById("identicalBayHeight").classList.toggle("hidden", locked);
-    document.getElementById("bayWidthError").classList.toggle("hidden", locked);
-    document.getElementById("bayHeightError").classList.toggle("hidden", locked);
-    ValidateBayConstraints();
-    //console.log("width x1: ", x1);
-}
-
-function RecalcBays() {
-    if (windowModel.bays.length === 0) return;
-    let currentX = profile.outerFrame.left - GetBayStructureProfile(windowModel.bays[0].opening).sashOverlap;
-
-    windowModel.bays.forEach((bay, i) => {
-        const bayProfile      = GetBayStructureProfile(bay.opening);
-        bay.verticalMullion   = bayProfile.verticalMullion;
-        bay.horizontalMullion = bayProfile.horizontalMullion;
-        bay.sashOverlap       = bayProfile.sashOverlap;
-        bay.glassInsetValue   = bayProfile.glassInset;
-
-        // Bay Outer Frame
-        bay.x = currentX;
-        bay.y = profile.outerFrame.top - bayProfile.sashOverlap;
-        if (i === windowModel.bays.length - 1) {
-            const targetRight = windowModel.width - profile.outerFrame.right + bayProfile.sashOverlap;
-            bay.width = Math.max(0, targetRight - bay.x);
-        }
-        // Bay Inner Frame
-        bay.frame = {x: bay.x + profile.bayFrame.left, y: bay.y + profile.bayFrame.top,
-            width:  bay.width  - profile.bayFrame.left - profile.bayFrame.right,
-            height: bay.height - profile.bayFrame.top  - profile.bayFrame.bottom
-        };
-
-        // Sash (overlaps outward)
-        const overlap = bayProfile.sashOverlap;
-        bay.sash = {x: bay.x + overlap, y: bay.y + overlap,
-            width: bay.width - 2 * overlap, height: bay.height - 2 * overlap
-        };
-
-        // Glass (inside sash)
-        const inset = bayProfile.glassInset;
-        bay.glassInset = {
-            x: bay.frame.x - inset, y: bay.frame.y - inset,
-            width:  bay.width  - profile.bayFrame.left - profile.bayFrame.right  + 2 * inset,
-            height: bay.height - profile.bayFrame.top  - profile.bayFrame.bottom + 2 * inset
-        };
-
-        // Clear Glass
-        bay.glass = {
-            x: bay.frame.x, y: bay.frame.y,
-            width:  bay.width  - profile.bayFrame.left - profile.bayFrame.right,
-            height: bay.height - profile.bayFrame.top  - profile.bayFrame.bottom
-        };
-
-        if (i < windowModel.bays.length - 1) {
-            const nextBay = windowModel.bays[i + 1];
-            const nextOverlap = GetBayStructureProfile(nextBay.opening).sashOverlap;
-            const interMullion = GetInterBayMullionWidth(i);
-            currentX += bay.width + interMullion - (overlap + nextOverlap);
-        }
-    });
-
-}
 
 function EnsureCadDefs(svg, NS) {
     const defs = svg.querySelector("defs");
@@ -1254,114 +1308,4 @@ function EnsureCadDefs(svg, NS) {
         CreateNewElement(NS, glassPattern, "rect", {x: 0, y: 0, width: 14, height: 14, fill: "#102335"});
         CreateNewElement(NS, glassPattern, "line", {x1: 0, y1: 0, x2: 0, y2: 14, stroke: "#355f85", "stroke-width": 2});
     }
-}
-
-function DrawOpeningSymbol(NS, parent, bay) {
-    const cx     = bay.glass.x + bay.glass.width / 2;
-    const cy     = bay.glass.y + bay.glass.height / 2;
-    const margin = Math.max(18, Math.min(bay.glass.width, bay.glass.height) * 0.12);
-    const left   = bay.glass.x + margin;
-    const right  = bay.glass.x + bay.glass.width - margin;
-    const top    = bay.glass.y + margin;
-    const bottom = bay.glass.y + bay.glass.height - margin;
-
-    const lineAttrs = {stroke: cadTheme.opening, "stroke-width": 4, fill: "none", "stroke-linecap": "round"};
-    const direction = bay.openingDirection || "";
-    const pathD = {
-        fixed: `M${cx},${top} L${cx},${bottom} M${right},${cy} L${left},${cy}`,
-        casement: direction === "left_to_right"
-            ? `M${right},${top} L${left},${cy}  L${right},${bottom} L${right},${top}`
-            : `M${left},${top}  L${right},${cy} L${left},${bottom}  L${left},${top}`,
-        hopper: direction === "top_to_bottom"
-            ? `M${cx},${top}    L${left},${bottom} L${right},${bottom} L${cx},${top}`
-            : `M${cx},${bottom} L${left},${top}    L${right},${top}    L${cx},${bottom}`,
-        transom: direction === "bottom_to_top"
-            ? `M${left},${bottom} L${right},${bottom} L${cx},${top}`
-            : `M${left},${top}    L${right},${top}    L${cx},${bottom}`,
-        tilt_turn: direction === "left_to_right"
-            ? `M${right},${top} L${left},${cy}  L${right},${bottom} L${right},${top} M${right},${bottom} L${cx},${top} L${left},${bottom}  L${right},${bottom}`
-            : `M${left},${top}  L${right},${cy} L${left},${bottom}  L${left},${top}  M${left},${bottom}  L${cx},${top} L${right},${bottom} L${left},${bottom}`,
-        sliding: direction === "right_to_left"
-            ? `M${left},${cy} L${right},${cy} M${left + margin},${cy - margin / 2}  L${left},${cy}  L${left + margin},${cy + margin / 2}`
-            : `M${left},${cy} L${right},${cy} M${right - margin},${cy - margin / 2} L${right},${cy} L${right - margin},${cy + margin / 2}`
-    };
-
-    const d = pathD[bay.opening] || pathD.fixed;
-    CreateNewElement(NS, parent, "path", {...lineAttrs, d: d});
-}
-
-function UpdateOpeningDirectionControl() {
-    const row = document.getElementById("openingDirectionRow");
-    const select = document.getElementById("openingDirection");
-    if (!row || !select || windowModel.selectedBay === null) return;
-
-    const bay = windowModel.bays[windowModel.selectedBay];
-    const directions = openingDirectionOptions[bay.opening] || [];
-    row.classList.toggle("hidden", directions.length === 0);
-
-    select.innerHTML = "";
-    directions.forEach(value => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = translate(value);
-        select.appendChild(option);
-    });
-
-    if (directions.length === 0) {
-        bay.openingDirection = "";
-        return;
-    }
-
-    if (!directions.includes(bay.openingDirection)) {
-        bay.openingDirection = directions[0];
-    }
-}
-
-function RenderSpecification() {
-    const tbody = document.getElementById("specTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    const hasVerticalMullion = windowModel.bays.length > 1 &&
-        windowModel.bays.some(bay => GetBayStructureProfile(bay.opening).verticalMullion > 0);
-    // Current model has no horizontal split members; keep this conditional for future extension.
-    const hasHorizontalMullion = windowModel.bays.some(bay => bay.hasHorizontalMullion === true);
-
-    windowModel.bays.forEach((bay, index) => {
-        const profileByOpening = GetBayStructureProfile(bay.opening);
-        const row = document.createElement("tr");
-
-        const directionText = bay.openingDirection ? translate(bay.openingDirection) : "—";
-        const windowFrameSpec = `${profile.outerFrame.left}/${profile.outerFrame.right}/${profile.outerFrame.top}/${profile.outerFrame.bottom}`;
-        const bayFrameSpec = `${profile.bayFrame.left}/${profile.bayFrame.right}/${profile.bayFrame.top}/${profile.bayFrame.bottom}`;
-        const columns = [
-            {key: "bay",               value: String(index + 1),                          className: "spec-col-tight"},
-            {key: "opening",           value: translate(bay.opening),                     className: "spec-col-tight"},
-            {key: "direction",         value: directionText,                              className: "spec-col-tight"},
-            {key: "width",             value: String(Math.round(bay.width)),              className: "spec-col-tight"},
-            {key: "height",            value: String(Math.round(bay.height)),             className: "spec-col-tight"},
-            {key: "windowFrame",       value: windowFrameSpec},
-            {key: "bayFrame",          value: bayFrameSpec},
-            {key: "verticalMullion",   value: String(profileByOpening.verticalMullion),   className: "spec-col-vertical-mullion"},
-            {key: "horizontalMullion", value: String(profileByOpening.horizontalMullion), className: "spec-col-horizontal-mullion"},
-            {key: "sashOverlap",       value: String(profileByOpening.sashOverlap)},
-            {key: "glassInset",        value: String(profileByOpening.glassInset)}
-        ];
-
-        columns.forEach(({value, className}) => {
-            const cell = document.createElement("td");
-            cell.textContent = value;
-            if (className) cell.classList.add(className);
-            row.appendChild(cell);
-        });
-
-        tbody.appendChild(row);
-    });
-
-    document.querySelectorAll(".spec-col-vertical-mullion").forEach(el => {
-        el.classList.toggle("hidden", !hasVerticalMullion);
-    });
-    document.querySelectorAll(".spec-col-horizontal-mullion").forEach(el => {
-        el.classList.toggle("hidden", !hasHorizontalMullion);
-    });
 }

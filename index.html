@@ -10,7 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
 
-    <title>Window Configurator</title>
+    <title>KRAS</title>
+    <!--link rel="stylesheet" href="style.css?v=20260305-3"-->
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -27,55 +28,127 @@
 
         <h1 data-i18n="title"></h1>
 
-        <fieldset class="profile-system">
-            <legend data-i18n="profile_system"></legend>
-
-            <div class="cell">
-                <span data-i18n="manufacturer"></span>
-                <select id="manufacturerSelect"></select>
-            </div>
-
-            <div class="cell">
-                <span data-i18n="profile_series"></span>
-                <select id="profileSeriesSelect"></select>
-            </div>
-        </fieldset>
-
-        <!-- Dimensions -->
+        <!-- Measurements -->
         <fieldset class="dimensions">
-            <legend data-i18n="dimensions"></legend>
+            <legend data-i18n="measurements"></legend>
 
             <div class="field">
                 <div class="cell">
-                    <span data-i18n="width"></span>
-                    <input type="number" id="width" step="10">
+                    <span data-i18n="win_template" class="template-label"></span>
+                    <select id="win_template">
+                        <option data-i18n="flat_tmp" value="flat"></option>
+                        <option data-i18n="bay_tmp" value="bay"></option>
+                        <option data-i18n="bow_tmp" value="bow"></option>
+                    </select>
                 </div>
-                <div id="widthError" class="error"></div>
-            </div>
-
-            <div class="field">
                 <div class="cell">
-                    <span data-i18n="height"></span>
-                    <input type="number" id="height" step="10">
+                    <span data-i18n="unit" class="unit-label"></span>
+                    <select id="unit">
+                        <option data-i18n="meter" value="m"></option>
+                        <option data-i18n="centimeter" value="cm"></option>
+                        <option data-i18n="millimeter" value="mm" selected></option>
+                    </select>
                 </div>
-                <div id="heightError" class="error"></div>
             </div>
 
-            <div class="field">
-                <div class="cell">
-                    <span data-i18n="cnt_bays"></span>
-                    <input type="number" id="cnt_bays" value="1" step="1" min="1">
+            <fieldset class="measure-fieldset" id="measureControls">
+                <div class="measure-grid flat-only">
+                    <div class="measure-list-label" data-i18n="width"></div>
+                    <div class="measure-list-label" data-i18n="height"></div>
+                    <ul id="widthList" class="measure-list"></ul>
+                    <ul id="heightList" class="measure-list"></ul>
+                    <div class="measure-row">
+                        <span data-i18n="width"></span>
+                        <input type="number" id="widthMeasure" step="10">
+                        <button type="button" id="addWidth" data-i18n="add" aria-label=""></button>
+                    </div>
+                    <div class="measure-row">
+                        <span data-i18n="height"></span>
+                        <input type="number" id="heightMeasure" step="10">
+                        <button type="button" id="addHeight" data-i18n="add" aria-label=""></button>
+                    </div>
                 </div>
-                <div id="cnt_baysError" class="error"></div>
-            </div>
-
-            <div class="field">
-                <div class="cell checkbox-cell">
-                    <span data-i18n="identical_bays"></span>
-                    <input type="checkbox" id="identical_bays">
+                <fieldset class="section-controls sections-only hidden" id="sectionControls">
+                <legend data-i18n="sections" id="sectionLegend"></legend>
+                <div class="section-selector">
+                    <span data-i18n="sections"></span>
+                    <select id="sectionSelect">
+                        <option value="0" data-i18n="left_sec"></option>
+                        <option value="1" data-i18n="central_sec"></option>
+                        <option value="2" data-i18n="right_sec"></option>
+                    </select>
+                    <button type="button" class="section-toggle-btn" data-section-toggle="0"></button>
+                    <button type="button" class="section-toggle-btn" data-section-toggle="2"></button>
                 </div>
-                <div class="error" aria-hidden="true"></div>
-            </div>
+                <div class="section-measure-grid">
+                    <div class="section-measure" data-section-index="0">
+                        <div class="section-measure-title">
+                            <span data-i18n="left_sec"></span>
+                        </div>
+                        <button type="button" class="section-toggle-btn" data-section-toggle="0"></button>
+                        <div class="measure-grid section-measure-grid-inner">
+                            <div class="measure-list-label" data-i18n="width"></div>
+                            <div class="measure-list-label" data-i18n="height"></div>
+                            <ul id="sectionLeftWidthList" class="measure-list"></ul>
+                            <ul id="sectionLeftHeightList" class="measure-list"></ul>
+                            <div class="measure-row">
+                                <span data-i18n="width"></span>
+                                <input type="number" id="sectionLeftWidthMeasure" step="10" data-section="0" data-kind="widths">
+                                <button type="button" id="addSectionLeftWidth" data-i18n="add" data-section="0" data-kind="widths" aria-label=""></button>
+                            </div>
+                            <div class="measure-row">
+                                <span data-i18n="height"></span>
+                                <input type="number" id="sectionLeftHeightMeasure" step="10" data-section="0" data-kind="heights">
+                                <button type="button" id="addSectionLeftHeight" data-i18n="add" data-section="0" data-kind="heights" aria-label=""></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-measure" data-section-index="1">
+                        <div class="section-measure-title">
+                            <span data-i18n="central_sec"></span>
+                        </div>
+                        <div class="measure-grid section-measure-grid-inner">
+                            <div class="measure-list-label" data-i18n="width"></div>
+                            <div class="measure-list-label" data-i18n="height"></div>
+                            <ul id="sectionCenterWidthList" class="measure-list"></ul>
+                            <ul id="sectionCenterHeightList" class="measure-list"></ul>
+                            <div class="measure-row">
+                                <span data-i18n="width"></span>
+                                <input type="number" id="sectionCenterWidthMeasure" step="10" data-section="1" data-kind="widths">
+                                <button type="button" id="addSectionCenterWidth" data-i18n="add" data-section="1" data-kind="widths" aria-label=""></button>
+                            </div>
+                            <div class="measure-row">
+                                <span data-i18n="height"></span>
+                                <input type="number" id="sectionCenterHeightMeasure" step="10" data-section="1" data-kind="heights">
+                                <button type="button" id="addSectionCenterHeight" data-i18n="add" data-section="1" data-kind="heights" aria-label=""></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-measure" data-section-index="2">
+                        <div class="section-measure-title">
+                            <span data-i18n="right_sec"></span>
+                        </div>
+                        <button type="button" class="section-toggle-btn" data-section-toggle="2"></button>
+                        <div class="measure-grid section-measure-grid-inner">
+                            <div class="measure-list-label" data-i18n="width"></div>
+                            <div class="measure-list-label" data-i18n="height"></div>
+                            <ul id="sectionRightWidthList" class="measure-list"></ul>
+                            <ul id="sectionRightHeightList" class="measure-list"></ul>
+                            <div class="measure-row">
+                                <span data-i18n="width"></span>
+                                <input type="number" id="sectionRightWidthMeasure" step="10" data-section="2" data-kind="widths">
+                                <button type="button" id="addSectionRightWidth" data-i18n="add" data-section="2" data-kind="widths" aria-label=""></button>
+                            </div>
+                            <div class="measure-row">
+                                <span data-i18n="height"></span>
+                                <input type="number" id="sectionRightHeightMeasure" step="10" data-section="2" data-kind="heights">
+                                <button type="button" id="addSectionRightHeight" data-i18n="add" data-section="2" data-kind="heights" aria-label=""></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </fieldset>
+            </fieldset>
 
         </fieldset>
 
@@ -102,67 +175,16 @@
 
                 </svg>
             </div>
-
-            <!-- Selected Bay Controls -->
-            <div id="bayControls" hidden>
-                <fieldset class="bay-controls-fieldset">
-                    <legend data-i18n="bay_controls"></legend>
-
-                    <div id="identicalBayWidth" class="bay-cell hidden">
-                        <span data-i18n="width"></span>
-                        <input type="number" id="bayWidth" step="10">
-                    </div>
-                    <div id="bayWidthError" class="error"></div>
-
-                    <div id="identicalBayHeight" class="bay-cell hidden">
-                        <span data-i18n="height"></span>
-                        <input type="number" id="bayHeight" step="10">
-                    </div>
-                    <div id="bayHeightError" class="error"></div>
-
-                    <div class="bay-cell">
-                        <span data-i18n="opening"></span>
-                        <select id="openingType">
-                            <option data-i18n="fixed" value="fixed"></option>
-                            <option data-i18n="casement" value="casement"></option>
-                            <option data-i18n="hopper" value="hopper"></option>
-                            <option data-i18n="tilt_turn" value="tilt_turn"></option>
-                            <!--option data-i18n="transom" value="transom"></option-->
-                            <option data-i18n="sliding" value="sliding"></option>
-                        </select>
-                    </div>
-
-                    <div id="openingDirectionRow" class="bay-cell hidden">
-                        <span data-i18n="opening_direction"></span>
-                        <select id="openingDirection"></select>
-                    </div>
-                </fieldset>
-            </div>
         </div>
 
-        <!-- Specification Table -->
-        <fieldset id="specification" class="specification">
+        <fieldset class="specification" id="specification">
             <legend data-i18n="specification"></legend>
             <table id="specTable">
                 <thead>
                     <tr>
-                        <th class="spec-col-tight" data-i18n="bay"></th>
-                        <th class="spec-col-tight" data-i18n="opening"></th>
-                        <th class="spec-col-tight" data-i18n="direction"></th>
-                        <th class="spec-col-tight" data-i18n="width"></th>
-                        <th class="spec-col-tight" data-i18n="height"></th>
-                        <th>
-                            <span data-i18n="windowFrameThicknessSpec"></span>
-                            <span class="spec-subhead">L/R/T/B (mm)</span>
-                        </th>
-                        <th>
-                            <span data-i18n="bayFrameThicknessSpec"></span>
-                            <span class="spec-subhead">L/R/T/B (mm)</span>
-                        </th>
-                        <th class="spec-col-vertical-mullion" data-i18n="verticalMullion"></th>
-                        <th class="spec-col-horizontal-mullion" data-i18n="horizontalMullion"></th>
-                        <th data-i18n="sashOverlap"></th>
-                        <th data-i18n="glassInset"></th>
+                        <th data-i18n="spec_section"></th>
+                        <th data-i18n="spec_width"></th>
+                        <th data-i18n="spec_height"></th>
                     </tr>
                 </thead>
                 <tbody id="specTableBody"></tbody>

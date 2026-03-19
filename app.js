@@ -174,11 +174,22 @@ function UpdateUnitLabels() {
     const unit = GetSelectedUnitLabel();
     const widthLabel = `${translate("width")} (${unit})`;
     const heightLabel = `${translate("height")} (${unit})`;
+    const widthLabelMobile = `${translate("width")}<br>(${unit})`;
+    const heightLabelMobile = `${translate("height")}<br>(${unit})`;
+    const isMobile = IsMobileLayout();
     document.querySelectorAll("[data-i18n=\"width\"]").forEach(el => {
-        el.textContent = widthLabel;
+        if (isMobile) {
+            el.innerHTML = widthLabelMobile;
+        } else {
+            el.textContent = widthLabel;
+        }
     });
     document.querySelectorAll("[data-i18n=\"height\"]").forEach(el => {
-        el.textContent = heightLabel;
+        if (isMobile) {
+            el.innerHTML = heightLabelMobile;
+        } else {
+            el.textContent = heightLabel;
+        }
     });
     document.querySelectorAll("[data-i18n=\"add\"]").forEach(el => {
         el.textContent = "+";

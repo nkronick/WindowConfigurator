@@ -30,7 +30,7 @@ select,button,input{font:inherit}
 .dimensions{display:grid;gap:.5rem 1rem;margin:1rem 0;border-radius:10px;}
 .dimensions{grid-template-columns: 1fr;gap:.5rem 1rem;}
 legend{grid-column:1/-1;font-weight:600}
-.field{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
+.field{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;padding:2px 2px 4px;}
 .section-controls{grid-column:1/-1;border:1px solid #4f647f;border-radius:8px;padding:6px 8px 8px;background:#111b29;}
 .section-selector{display:none;align-items:center;gap:.5rem;margin:0 0 .5rem 0;}
 .section-selector span{white-space:nowrap;}
@@ -54,11 +54,18 @@ legend{grid-column:1/-1;font-weight:600}
     }
 }
 @media(max-width:600px){
+    html:not(.preview-desktop) .dimensions{gap:.2rem .75rem;padding:2px 2px 4px;}
+    html:not(.preview-desktop) .dimensions > legend{margin-bottom:0;padding:0 .2rem;}
     html:not(.preview-desktop) .field{grid-template-columns:1fr;}
-    html:not(.preview-desktop) .field .cell{grid-template-columns:max-content minmax(0, max-content);}
+    html:not(.preview-desktop) .field .cell{grid-template-columns:max-content minmax(0, max-content);padding-left:4px;}
     html:not(.preview-desktop) .field #win_template,
     html:not(.preview-desktop) .field #unit{width:max-content;max-width:100%;min-width:0;display:block;justify-self:start;}
-    html:not(.preview-desktop) .section-controls{min-width:0;padding:2px 4px 4px;}
+    html:not(.preview-desktop) .measure-fieldset{min-width:0;}
+    html:not(.preview-desktop) .measure-fieldset:not(.bay-only){padding:4px 6px 6px;}
+    html:not(.preview-desktop) .measure-fieldset.bay-only{margin-top:-.15rem;}
+    html:not(.preview-desktop) .measure-grid{gap:.2rem .35rem;}
+    html:not(.preview-desktop) .measure-row{grid-template-columns:max-content minmax(0, 10ch) auto;gap:.25rem .35rem;}
+    html:not(.preview-desktop) .section-controls{min-width:0;padding:2px 2px 4px;}
     html:not(.preview-desktop) .section-controls > legend{margin-bottom:0;padding:0 .2rem;}
     html:not(.preview-desktop) .section-selector #sectionSelect{width:max-content;max-width:100%;min-width:0;display:block;}
     html:not(.preview-desktop) .section-selector{display:flex;margin:0 0 .35rem 0;}
@@ -66,7 +73,7 @@ legend{grid-column:1/-1;font-weight:600}
     html:not(.preview-desktop) .section-measure-grid{grid-template-columns:1fr;gap:0;}
     html:not(.preview-desktop) .section-measure{border:none;border-radius:0;background:transparent;padding:.25rem 0;}
     html:not(.preview-desktop) .section-measure-grid-inner{gap:.2rem .35rem;}
-    html:not(.preview-desktop) .section-measure-grid-inner .measure-row{grid-template-columns:max-content minmax(0, 8ch) auto;gap:.25rem .35rem;}
+    html:not(.preview-desktop) .section-measure-grid-inner .measure-row{grid-template-columns:max-content minmax(0, 9ch) auto;gap:.25rem .35rem;}
     html:not(.preview-desktop) .section-measure-title{display:none;}
     html:not(.preview-desktop) .section-measure[data-mobile-hidden="true"]{display:none;}
     html:not(.preview-desktop) .section-toggle-btn{display:none;}
@@ -76,17 +83,24 @@ html.preview-mobile .section-selector span{display:none;}
 html.preview-mobile .section-measure-title{display:none;}
 html.preview-mobile .section-measure[data-mobile-hidden="true"]{display:none;}
 html.preview-mobile .section-toggle-btn{display:none;}
+html.preview-mobile .dimensions{gap:.2rem .75rem;padding:2px 0 4px;}
+html.preview-mobile .dimensions > legend{margin-bottom:0;padding:0 .2rem;}
 html.preview-mobile .field{grid-template-columns:1fr;}
-html.preview-mobile .field .cell{grid-template-columns:max-content minmax(0, max-content);}
+html.preview-mobile .field .cell{grid-template-columns:max-content minmax(0, max-content);padding-left:4px;}
 html.preview-mobile .field #win_template,
 html.preview-mobile .field #unit{width:max-content;max-width:100%;min-width:0;display:block;justify-self:start;}
-html.preview-mobile .section-controls{min-width:0;padding:2px 4px 4px;}
+html.preview-mobile .measure-fieldset{min-width:0;}
+html.preview-mobile .measure-fieldset:not(.bay-only){padding:6px 2px 2px;}
+html.preview-mobile .measure-fieldset.bay-only{margin-top:-.15rem;}
+html.preview-mobile .measure-grid{gap:.2rem .35rem;}
+html.preview-mobile .measure-row{grid-template-columns:max-content minmax(0, 10ch) auto;gap:.15rem .15rem;}
+html.preview-mobile .section-controls{min-width:0;padding:2px 2px 4px;}
 html.preview-mobile .section-controls > legend{margin-bottom:0;padding:0 .2rem;}
 html.preview-mobile .section-selector #sectionSelect{width:max-content;max-width:100%;min-width:0;display:block;}
 html.preview-mobile .section-measure-grid{grid-template-columns:1fr;gap:0;}
 html.preview-mobile .section-measure{border:none;border-radius:0;background:transparent;padding:.25rem 0;}
 html.preview-mobile .section-measure-grid-inner{gap:.2rem .35rem;}
-html.preview-mobile .section-measure-grid-inner .measure-row{grid-template-columns:max-content minmax(0, 8ch) auto;gap:.25rem .35rem;}
+html.preview-mobile .section-measure-grid-inner .measure-row{grid-template-columns:max-content 8ch auto;gap:.25rem .15rem;}
 .measure-row{display:grid;grid-template-columns:minmax(0,1fr) 10ch auto;align-items:center;gap:.35rem .6rem;margin-top:.15rem;}
 .measure-row span{white-space:normal;line-height:1.1;justify-self:end;text-align:end;}
 .measure-row button{width:auto;min-width:28px;padding:4px 8px;height:28px;line-height:1;font-size:.85rem;align-self:center;justify-self:start;position:relative;top:-5px;}
@@ -98,7 +112,7 @@ html.preview-mobile .section-measure-grid-inner .measure-row{grid-template-colum
 .measure-grid{display:grid;grid-template-columns:1fr 1fr;gap:.25rem 1.75rem;align-items:start;margin-bottom:0;}
 .measure-grid > *{min-width:0;}
 .measure-list-label{font-weight:600;margin-bottom:0;opacity:0;visibility:hidden;line-height:1.1;overflow-wrap:anywhere;}
-.measure-grid > .measure-list-label{font-weight:500;opacity:.9;}
+.measure-grid > .measure-list-label{font-weight:400;opacity:.9;}
 .measure-grid.has-values .measure-list-label{opacity:.9;visibility:visible;}
 .measure-grid:not(.has-values) .measure-list-label{display:none;}
 .measure-list{list-style:none;margin:0;padding:0;display:grid;gap:.2rem;min-width:0;width: 12ch;}

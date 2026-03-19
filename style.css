@@ -55,9 +55,10 @@ legend{grid-column:1/-1;font-weight:600}
 }
 @media(max-width:600px){
     html:not(.preview-desktop) .field{grid-template-columns:1fr;}
-    html:not(.preview-desktop) #win_template,
-    html:not(.preview-desktop) #unit,
-    html:not(.preview-desktop) #sectionSelect{width:max-content;max-width:100%;min-width:0;display:block;}
+    html:not(.preview-desktop) .field .cell{grid-template-columns:max-content minmax(0, max-content);}
+    html:not(.preview-desktop) .field #win_template,
+    html:not(.preview-desktop) .field #unit{width:max-content;max-width:100%;min-width:0;display:block;justify-self:start;}
+    html:not(.preview-desktop) .section-selector #sectionSelect{width:max-content;max-width:100%;min-width:0;display:block;}
     html:not(.preview-desktop) .section-selector{display:flex;}
     html:not(.preview-desktop) .section-selector span{display:none;}
     html:not(.preview-desktop) .section-measure-grid{grid-template-columns:1fr;}
@@ -71,9 +72,10 @@ html.preview-mobile .section-measure-title{display:none;}
 html.preview-mobile .section-measure[data-mobile-hidden="true"]{display:none;}
 html.preview-mobile .section-toggle-btn{display:none;}
 html.preview-mobile .field{grid-template-columns:1fr;}
-html.preview-mobile #win_template,
-html.preview-mobile #unit,
-html.preview-mobile #sectionSelect{width:max-content;max-width:100%;min-width:0;display:block;}
+html.preview-mobile .field .cell{grid-template-columns:max-content minmax(0, max-content);}
+html.preview-mobile .field #win_template,
+html.preview-mobile .field #unit{width:max-content;max-width:100%;min-width:0;display:block;justify-self:start;}
+html.preview-mobile .section-selector #sectionSelect{width:max-content;max-width:100%;min-width:0;display:block;}
 .measure-row{display:grid;grid-template-columns:minmax(0,1fr) 10ch auto;align-items:center;gap:.35rem .6rem;margin-top:.15rem;}
 .measure-row span{white-space:normal;line-height:1.1;justify-self:end;text-align:end;}
 .measure-row button{padding:4px 8px;height:28px;line-height:1;font-size:.85rem;align-self:center;position:relative;top:-5px;}

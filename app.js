@@ -178,14 +178,14 @@ function UpdateUnitLabels() {
     const heightLabelMobile = `${translate("height")}<br>(${unit})`;
     const isMobile = IsMobileLayout();
     document.querySelectorAll("[data-i18n=\"width\"]").forEach(el => {
-        if (isMobile) {
+        if (isMobile && !el.classList.contains("measure-list-label")) {
             el.innerHTML = widthLabelMobile;
         } else {
             el.textContent = widthLabel;
         }
     });
     document.querySelectorAll("[data-i18n=\"height\"]").forEach(el => {
-        if (isMobile) {
+        if (isMobile && !el.classList.contains("measure-list-label")) {
             el.innerHTML = heightLabelMobile;
         } else {
             el.textContent = heightLabel;

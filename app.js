@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
         DrawWindow();
     });
 
+    // Window Template (Flat/Bay/Bow)
     const templateSelect = document.getElementById("win_template");
     if (templateSelect) {
         templateSelect.addEventListener("change", () => {
@@ -62,20 +63,23 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Unit of Measurement
     const unitSelect = document.getElementById("unit");
     if (unitSelect) {
         unitSelect.addEventListener("change", () => {
             const prevUnit = windowModel.unit || unitSelect.value;
             const nextUnit = unitSelect.value;
             if (prevUnit !== nextUnit) {
-                ConvertInputValue(document.getElementById("widthMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("beam_width"),    prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("clearance"),     prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("widthMeasure"),  prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("heightMeasure"), prevUnit, nextUnit);
-                ConvertInputValue(document.getElementById("sectionLeftWidthMeasure"), prevUnit, nextUnit);
-                ConvertInputValue(document.getElementById("sectionLeftHeightMeasure"), prevUnit, nextUnit);
-                ConvertInputValue(document.getElementById("sectionCenterWidthMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionLeftWidthMeasure"),    prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionLeftHeightMeasure"),   prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionCenterWidthMeasure"),  prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("sectionCenterHeightMeasure"), prevUnit, nextUnit);
-                ConvertInputValue(document.getElementById("sectionRightWidthMeasure"), prevUnit, nextUnit);
-                ConvertInputValue(document.getElementById("sectionRightHeightMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionRightWidthMeasure"),   prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("sectionRightHeightMeasure"),  prevUnit, nextUnit);
                 windowModel.unit = nextUnit;
             }
             UpdateUnitLabels();
@@ -170,13 +174,21 @@ function ConvertInputValue(input, fromUnit, toUnit) {
     input.value = FormatValue(converted, toUnit);
 }
 
+// Add Units of Measurements to the Labels
 function UpdateUnitLabels() {
     const unit = GetSelectedUnitLabel();
-    const widthLabel = `${translate("width")} (${unit})`;
-    const heightLabel = `${translate("height")} (${unit})`;
-    const widthLabelMobile = `${translate("width")}<br>(${unit})`;
+    const beamWidthLabel    = `${translate("beam_width")} (${unit})`;
+    const clearanceLabel    = `${translate("clearance")} (${unit})`;
+    const widthLabel        = `${translate("width")} (${unit})`;
+    const heightLabel       = `${translate("height")} (${unit})`;
+    const widthLabelMobile  = `${translate("width")}<br>(${unit})`;
     const heightLabelMobile = `${translate("height")}<br>(${unit})`;
     const isMobile = IsMobileLayout();
+    // Beam Width
+    document.querySelectorAll("[data-i18n=\"beam_width\"]").forEach(el => {el.textContent = beamWidthLabel;});
+    // Clearance
+    document.querySelectorAll("[data-i18n=\"clearance\"]").forEach(el => {el.textContent = clearanceLabel;});
+    // Width
     document.querySelectorAll("[data-i18n=\"width\"]").forEach(el => {
         if (isMobile && !el.classList.contains("measure-list-label")) {
             el.innerHTML = widthLabelMobile;
@@ -184,6 +196,7 @@ function UpdateUnitLabels() {
             el.textContent = widthLabel;
         }
     });
+    // Height
     document.querySelectorAll("[data-i18n=\"height\"]").forEach(el => {
         if (isMobile && !el.classList.contains("measure-list-label")) {
             el.innerHTML = heightLabelMobile;
@@ -466,6 +479,8 @@ function UpdateWindow() {
 }
 
 function GetDimensions() {
+    const beamWidth = ParseNumericValue(document.getElementById("beam_width").value);
+    const clearance = ParseNumericValue(document.getElementById("clearance").value);
     const templateSelect = document.getElementById("win_template");
     if (templateSelect) {
         windowModel.template = templateSelect.value;
@@ -481,8 +496,8 @@ function GetDimensions() {
             windowModel.width  = Number.NaN;
             windowModel.height = Number.NaN;
         } else {
-            windowModel.width  = widthValue;
-            windowModel.height = heightValue;
+            windowModel.width  = widthValue  - clearance;
+            windowModel.height = heightValue - clearance;
         }
         return;
     }
@@ -504,7 +519,7 @@ function GetDimensions() {
         }
         return {
             index,
-            width: widthValue,
+            width:  widthValue,
             height: heightValue,
             drawable: true
         };
@@ -523,13 +538,13 @@ function GetDimensions() {
         const section = sectionSizes[index];
         return {
             index,
-            width: section.width,
-            height: section.height
+            width:  section.width  - clearance - beamWidth/(section.index === 1 ? 1 : 2),
+            height: section.height - clearance
         };
     });
 
     if (windowModel.sections.length === 0) {
-        windowModel.width = Number.NaN;
+        windowModel.width  = Number.NaN;
         windowModel.height = Number.NaN;
         return;
     }
@@ -1064,6 +1079,7 @@ function DrawWindow() {
 
     const W = windowModel.width;
     const H = windowModel.height;
+    const drawingDiv = document.getElementById("drawing");
     const template = windowModel.template || "flat";
     if (template === "flat") {
         if (!Number.isFinite(windowModel.width) || !Number.isFinite(windowModel.height)) {
@@ -1073,8 +1089,6 @@ function DrawWindow() {
         }
         EnsureSections();
     }
-
-    const drawingDiv = document.getElementById("drawing");
     if (template !== "flat" && (!Array.isArray(windowModel.sections) || windowModel.sections.length === 0)) {
         drawingDiv.classList.remove("active");
         drawingDiv.style.display = "none";

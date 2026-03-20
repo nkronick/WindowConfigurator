@@ -20,6 +20,8 @@ select,button,input{font:inherit}
 
 [data-i18n=win_template]::after,
 [data-i18n=unit]::after,
+[data-i18n=beam_width]::after,
+[data-i18n=clearance]::after,
 [data-i18n=left_sec]::after,
 [data-i18n=central_sec]::after,
 [data-i18n=right_sec]::after,
@@ -60,6 +62,8 @@ legend{grid-column:1/-1;font-weight:600}
     html:not(.preview-desktop) .field .cell{grid-template-columns:max-content minmax(0, max-content);padding-left:4px;}
     html:not(.preview-desktop) .field #win_template,
     html:not(.preview-desktop) .field #unit{width:max-content;max-width:100%;min-width:0;display:block;justify-self:start;}
+    html:not(.preview-desctop) .field #beam_width,
+    html:not(.preview-desctop) .field #clearance{width:7ch;}
     html:not(.preview-desktop) .measure-fieldset{min-width:0;}
     html:not(.preview-desktop) .measure-fieldset:not(.bay-only){padding:4px 6px 6px;}
     html:not(.preview-desktop) .measure-fieldset.bay-only{margin-top:-.15rem;}
@@ -89,6 +93,8 @@ html.preview-mobile .field{grid-template-columns:1fr;}
 html.preview-mobile .field .cell{grid-template-columns:max-content minmax(0, max-content);padding-left:4px;}
 html.preview-mobile .field #win_template,
 html.preview-mobile .field #unit{width:max-content;max-width:100%;min-width:0;display:block;justify-self:start;}
+html.preview-mobile .field #beam_width,
+html.preview-mobile .field #clearance{width:7ch;}
 html.preview-mobile .measure-fieldset{min-width:0;}
 html.preview-mobile .measure-fieldset:not(.bay-only){padding:6px 2px 2px;}
 html.preview-mobile .measure-fieldset.bay-only{margin-top:-.15rem;}
@@ -141,6 +147,8 @@ input.warning{border-color:#f39c12}
 .error.warning{color:#f39c12}
 .dimensions .field > .error{min-height:1em}
 .bay-controls-fieldset > .error{grid-column:1/ -1;margin-top:-.25rem;min-height:1em}
+.field #beam_width,
+.field #clearance{width:7ch;}
 
 /* Buttons */
 button{display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:8px;background:#2787ee;color:#fff;cursor:pointer;transition:.2s}

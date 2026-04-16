@@ -33,7 +33,21 @@ function IsMobileLayout() {
     if (root.classList.contains("preview-desktop")) return false;
     return window.matchMedia("(max-width: 600px)").matches;
 }
+/*
+function debounce(func, delay = 100) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+}
 
+const debouncedUpdate = debounce(() => {
+        UpdateWindow();
+        RenderMeasurements();
+        UpdateResults();
+}, 100);
+*/
 document.addEventListener("DOMContentLoaded", () => {
     ApplyViewportPreviewMode(GetViewportPreviewMode());
     
@@ -73,7 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 ConvertInputValue(document.getElementById("beam_width"),    prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("clearance"),     prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("widthMeasure"),  prevUnit, nextUnit);
-                ConvertInputValue(document.getElementById("heightMeasure"), prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("topHeightMeasure"),    prevUnit, nextUnit);
+                ConvertInputValue(document.getElementById("bottomHeightMeasure"), prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("sectionLeftWidthMeasure"),    prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("sectionLeftHeightMeasure"),   prevUnit, nextUnit);
                 ConvertInputValue(document.getElementById("sectionCenterWidthMeasure"),  prevUnit, nextUnit);
@@ -181,8 +196,10 @@ function UpdateUnitLabels() {
     const clearanceLabel    = `${translate("clearance")} (${unit})`;
     const widthLabel        = `${translate("width")} (${unit})`;
     const heightLabel       = `${translate("height")} (${unit})`;
-    const widthLabelMobile  = `${translate("width")}<br>(${unit})`;
-    const heightLabelMobile = `${translate("height")}<br>(${unit})`;
+    //const widthLabelMobile  = `${translate("width")}<br>(${unit})`;
+    //const heightLabelMobile = `${translate("height")}<br>(${unit})`;
+    const widthLabelMobile  = `${translate("width")} (${unit})`;
+    const heightLabelMobile = `${translate("height")} (${unit})`;
     const isMobile = IsMobileLayout();
     // Beam Width
     document.querySelectorAll("[data-i18n=\"beam_width\"]").forEach(el => {el.textContent = beamWidthLabel;});
@@ -267,7 +284,7 @@ let windowModel = {
         heights: []
     },
     measurementDrafts: {
-        width: Number.NaN,
+        width:  Number.NaN,
         height: Number.NaN
     },
     sectionMeasurements: [
@@ -323,8 +340,19 @@ function EnsureMeasurementDrafts() {
         windowModel.measurementDrafts = {width: Number.NaN, height: Number.NaN};
     } else {
         windowModel.measurementDrafts = {
-            width: Number.isFinite(windowModel.measurementDrafts.width) ? windowModel.measurementDrafts.width : Number.NaN,
+            width:  Number.isFinite(windowModel.measurementDrafts.width) ? windowModel.measurementDrafts.width : Number.NaN,
             height: Number.isFinite(windowModel.measurementDrafts.height) ? windowModel.measurementDrafts.height : Number.NaN
+        };
+    }
+}
+
+function EnsureSectionMeasurementDrafts(index) {
+    if (!windowModel.sectionDrafts[index] || typeof windowModel.sectionDrafts[index] !== "object") {
+        windowModel.sectionDrafts[index] = {width: Number.NaN, height: Number.NaN};
+    } else {
+        windowModel.sectionDrafts[index] = {
+            width:  Number.isFinite(windowModel.sectionDrafts[index].width) ? windowModel.sectionDrafts[index].width : Number.NaN,
+            height: Number.isFinite(windowModel.sectionDrafts[index].height) ? windowModel.sectionDrafts[index].height : Number.NaN
         };
     }
 }
@@ -488,10 +516,18 @@ function GetDimensions() {
     const template = windowModel.template || "flat";
     if (template === "flat") {
         EnsureMeasurementDrafts();
-        const width  = GetMinMeasurement("widths");
-        const height = GetMinMeasurement("heights");
+        const width        = GetMinMeasurement("widths");
+        const heightTop    = GetMinHeightMeasurement("top");
+        const heightBottom = GetMinHeightMeasurement("bottom");
+        
         const widthValue  = Number.isFinite(width) ? width : windowModel.measurementDrafts.width;
-        const heightValue = Number.isFinite(height) ? height : windowModel.measurementDrafts.height;
+        const topValue    = Number.isFinite(heightTop) ? heightTop : windowModel.measurementDrafts.height;
+        const bottomValue = Number.isFinite(heightBottom) ? heightBottom : 0;  //windowModel.measurementDrafts.heightBottom;
+        const heightValue = Number.isFinite(topValue) && Number.isFinite(bottomValue) ? Math.min(topValue) + Math.min(bottomValue) : Number.NaN;
+        //const heightValue = Number(heightTop) + Number(heightBottom);
+
+        //console.log("heightValue: ", heightValue);
+
         if (!Number.isFinite(widthValue) || !Number.isFinite(heightValue)) {
             windowModel.width  = Number.NaN;
             windowModel.height = Number.NaN;
@@ -509,9 +545,13 @@ function GetDimensions() {
         }
         const draft  = windowModel.sectionDrafts[index] || {width: Number.NaN, height: Number.NaN};
         const width  = GetMinValue(section.widths);
-        const height = GetMinValue(section.heights);
-        const widthValue  = Number.isFinite(width) ? width : draft.width;
-        const heightValue = Number.isFinite(height) ? height : draft.height;
+        const heightTop    = GetMinSectionHeightMeasurement(index, "top");
+        const heightBottom = GetMinSectionHeightMeasurement(index, "bottom");
+        const widthValue   = Number.isFinite(width) ? width : draft.width;
+        const topValue     = Number.isFinite(heightTop) ? heightTop : draft.height;
+        const bottomValue  = Number.isFinite(heightBottom) ? heightBottom : 0;  //windowModel.sectionDrafts[index].heightBottom;
+        const heightValue  = Number.isFinite(topValue) && Number.isFinite(bottomValue) ? Math.min(topValue) + Math.min(bottomValue) : Number.NaN;
+        
         const hasWidth  = Number.isFinite(widthValue);
         const hasHeight = Number.isFinite(heightValue);
         if (!hasWidth || !hasHeight) {
@@ -558,12 +598,13 @@ function ShouldShowFieldError(inputId) {
 }
 
 function BindMeasureInputs() {
-    const widthInput  = document.getElementById("widthMeasure");
-    const heightInput = document.getElementById("heightMeasure");
-    const addWidth    = document.getElementById("addWidth");
-    const addHeight   = document.getElementById("addHeight");
-    const widthList   = document.getElementById("widthList");
-    const heightList  = document.getElementById("heightList");
+    const widthInput        = document.getElementById("widthMeasure");
+    const topHeightInput    = document.getElementById("topHeightMeasure");
+    const bottomHeightInput = document.getElementById("bottomHeightMeasure");
+    const addWidth          = document.getElementById("addWidth");
+    const addHeight         = document.getElementById("addHeight");
+    const widthList         = document.getElementById("widthList");
+    const heightList        = document.getElementById("heightList");
 
     if (addWidth) {
         addWidth.textContent = "+";
@@ -578,7 +619,7 @@ function BindMeasureInputs() {
         addHeight.setAttribute("title", translate("add"));
         addHeight.setAttribute("aria-label", translate("add"));
         addHeight.addEventListener("click", () => {
-            AddMeasurement("heights", heightInput);
+            AddHeightMeasurement(topHeightInput, bottomHeightInput);
         });
     }
     if (widthInput) {
@@ -598,23 +639,17 @@ function BindMeasureInputs() {
             }
         });
     }
-    if (heightInput) {
-        heightInput.addEventListener("input", () => {
-            const value = ParseNumericValue(heightInput.value);
-            EnsureMeasurementDrafts();
-            if (!Number.isFinite(value) || value <= 0) return;
-            const unit = GetSelectedUnitLabel();
-            windowModel.measurementDrafts.height = value * UnitToMm(unit);
-            UpdateWindow();
-            RenderMeasurements();
-        });
-        heightInput.addEventListener("keydown", e => {
+    [topHeightInput, bottomHeightInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener("input", UpdateHeightDrafts);
+        input.addEventListener("keydown", e => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                AddMeasurement("heights", heightInput);
+                AddHeightMeasurement(topHeightInput, bottomHeightInput);
+                UpdateWindow();
             }
         });
-    }
+    });
     if (widthList) {
         widthList.addEventListener("click", e => {
             const btn = e.target.closest("button[data-index]");
@@ -633,8 +668,246 @@ function BindMeasureInputs() {
             RemoveMeasurement("heights", index);
         });
     }
+/*
+    const sectionLeftWidthInput        = document.getElementById("sectionLeftWidthMeasure");
+    const sectionLeftTopHeightInput    = document.getElementById("sectionLeftTopHeightMeasure");
+    const sectionLeftBottomHeightInput = document.getElementById("sectionLeftBottomHeightMeasure");
+    const addSectionLeftWidth          = document.getElementById("addSectionLeftWidth");
+    const addSectionLeftHeight         = document.getElementById("addSectionLeftHeight");
+    const sectionLeftWidthList         = document.getElementById("sectionLeftWidthList");
+    const sectionLeftHeightList        = document.getElementById("sectionLeftHeightList");
+    if (addSectionLeftWidth) {
+        addSectionLeftWidth.textContent = "+";
+        addSectionLeftWidth.setAttribute("title", translate("add"));
+        addSectionLeftWidth.setAttribute("aria-label", translate("add"));
+        addSectionLeftWidth.addEventListener("click", () => {
+            AddSectionMeasurement(0, "widths", sectionLeftWidthInput);
+        });
+    }
+    if (addSectionLeftHeight) {
+        addSectionLeftHeight.textContent = "+";
+        addSectionLeftHeight.setAttribute("title", translate("add"));
+        addSectionLeftHeight.setAttribute("aria-label", translate("add"));
+        addSectionLeftHeight.addEventListener("click", () => {
+            AddSectionHeightMeasurement(0, sectionLeftTopHeightInput, sectionLeftBottomHeightInput);
+        });
+    }
+    if (sectionLeftWidthInput) {
+        sectionLeftWidthInput.addEventListener("input", () => {
+            const value = ParseNumericValue(sectionLeftWidthInput.value);
+            EnsureSectionMeasurementDrafts(0);
+            if (!Number.isFinite(value) || value <= 0) return;
+            const unit = GetSelectedUnitLabel();
+            windowModel.sectionDrafts[0].width = value * UnitToMm(unit);
+            UpdateWindow();
+            RenderMeasurements();
+        });
+        sectionLeftWidthInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddSectionMeasurement(0, "widths", sectionLeftWidthInput);
+            }
+        });
+    }
+    [sectionLeftTopHeightInput, sectionLeftBottomHeightInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener("input", UpdateSectionHeightDrafts(0));
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddSectionHeightMeasurement(0, sectionLeftTopHeightInput, sectionLeftBottomHeightInput);
+            }
+        });
+    });
+    if (sectionLeftWidthList) {
+        sectionLeftWidthList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveSectionMeasurement(0, "widths", index);
+        });
+    }
+    if (sectionLeftHeightList) {
+        sectionLeftHeightList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveSectionMeasurement(0, "heights", index);
+        });
+    }
+
+    const sectionCenterWidthInput        = document.getElementById("sectionCenterWidthMeasure");
+    const sectionCenterTopHeightInput    = document.getElementById("sectionCenterTopHeightMeasure");
+    const sectionCenterBottomHeightInput = document.getElementById("sectionCenterBottomHeightMeasure");
+    const addSectionCenterWidth          = document.getElementById("addSectionCenterWidth");
+    const addSectionCenterHeight         = document.getElementById("addSectionCenterHeight");
+    const sectionCenterWidthList         = document.getElementById("sectionCenterWidthList");
+    const sectionCenterHeightList        = document.getElementById("sectionCenterHeightList");
+    if (addSectionCenterWidth) {
+        addSectionCenterWidth.textContent = "+";
+        addSectionCenterWidth.setAttribute("title", translate("add"));
+        addSectionCenterWidth.setAttribute("aria-label", translate("add"));
+        addSectionCenterWidth.addEventListener("click", () => {
+            AddSectionMeasurement(1, "widths", sectionCenterWidthInput);
+        });
+    }
+    if (addSectionCenterHeight) {
+        addSectionCenterHeight.textContent = "+";
+        addSectionCenterHeight.setAttribute("title", translate("add"));
+        addSectionCenterHeight.setAttribute("aria-label", translate("add"));
+        addSectionCenterHeight.addEventListener("click", () => {
+            AddSectionHeightMeasurement(1, sectionCenterTopHeightInput, sectionCenterBottomHeightInput);
+        });
+    }
+    if (sectionCenterWidthInput) {
+        sectionCenterWidthInput.addEventListener("input", () => {
+            const value = ParseNumericValue(sectionCenterWidthInput.value);
+            EnsureSectionMeasurementDrafts(1);
+            if (!Number.isFinite(value) || value <= 0) return;
+            const unit = GetSelectedUnitLabel();
+            windowModel.sectionDrafts[1].width = value * UnitToMm(unit);
+            UpdateWindow();
+            RenderMeasurements();
+        });
+        sectionCenterWidthInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddSectionMeasurement(1, "widths", sectionCenterWidthInput);
+            }
+        });
+    }
+    [sectionCenterTopHeightInput, sectionCenterBottomHeightInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener("input", UpdateSectionHeightDrafts(1));
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddSectionHeightMeasurement(1, sectionCenterTopHeightInput, sectionCenterBottomHeightInput);
+            }
+        });
+    });
+    if (sectionCenterWidthList) {
+        sectionCenterWidthList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveSectionMeasurement(1, "widths", index);
+        });
+    }
+    if (sectionCenterHeightList) {
+        sectionCenterHeightList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveSectionMeasurement(1, "heights", index);
+        });
+    }
+
+    const sectionRightWidthInput        = document.getElementById("sectionRightWidthMeasure");
+    const sectionRightTopHeightInput    = document.getElementById("sectionRightTopHeightMeasure");
+    const sectionRightBottomHeightInput = document.getElementById("sectionRightBottomHeightMeasure");
+    const addSectionRightWidth          = document.getElementById("addSectionRightWidth");
+    const addSectionRightHeight         = document.getElementById("addSectionRightHeight");
+    const sectionRightWidthList         = document.getElementById("sectionRightWidthList");
+    const sectionRightHeightList        = document.getElementById("sectionRightHeightList");
+    if (addSectionRightWidth) {
+        addSectionRightWidth.textContent = "+";
+        addSectionRightWidth.setAttribute("title", translate("add"));
+        addSectionRightWidth.setAttribute("aria-label", translate("add"));
+        addSectionRightWidth.addEventListener("click", () => {
+            AddSectionMeasurement(2, "widths", sectionRightWidthInput);
+        });
+    }
+    if (addSectionRightHeight) {
+        addSectionRightHeight.textContent = "+";
+        addSectionRightHeight.setAttribute("title", translate("add"));
+        addSectionRightHeight.setAttribute("aria-label", translate("add"));
+        addSectionRightHeight.addEventListener("click", () => {
+            AddSectionHeightMeasurement(2, sectionRightTopHeightInput, sectionRightBottomHeightInput);
+        });
+    }
+    if (sectionRightWidthInput) {
+        sectionRightWidthInput.addEventListener("input", () => {
+            const value = ParseNumericValue(sectionRightWidthInput.value);
+            EnsureSectionMeasurementDrafts(2);
+            if (!Number.isFinite(value) || value <= 0) return;
+            const unit = GetSelectedUnitLabel();
+            windowModel.sectionDrafts[2].width = value * UnitToMm(unit);
+            UpdateWindow();
+            RenderMeasurements();
+        });
+        sectionRightWidthInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddSectionMeasurement(2, "widths", sectionRightWidthInput);
+            }
+        });
+    }
+    [sectionRightTopHeightInput, sectionRightBottomHeightInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener("input", UpdateSectionHeightDrafts(2));
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                AddSectionHeightMeasurement(2, sectionRightTopHeightInput, sectionRightBottomHeightInput);
+            }
+        });
+    });
+    if (sectionRightWidthList) {
+        sectionRightWidthList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveSectionMeasurement(2, "widths", index);
+        });
+    }
+    if (sectionRightHeightList) {
+        sectionRightHeightList.addEventListener("click", e => {
+            const btn = e.target.closest("button[data-index]");
+            if (!btn) return;
+            const index = Number(btn.dataset.index);
+            if (!Number.isFinite(index)) return;
+            RemoveSectionMeasurement(2, "heights", index);
+        });
+    }
+*/
 }
 
+function UpdateHeightDrafts() {
+    const topHeightInput    = document.getElementById("topHeightMeasure");
+    const bottomHeightInput = document.getElementById("bottomHeightMeasure");
+    EnsureMeasurementDrafts();
+    const unit = GetSelectedUnitLabel();
+    const topValue    = ParseNumericValue(topHeightInput?.value ?? "");
+    const bottomValue = ParseNumericValue(bottomHeightInput?.value ?? "");
+    windowModel.measurementDrafts.height = (
+        (Number.isFinite(topValue) && topValue > 0 ? topValue * UnitToMm(unit) : Number.NaN) +
+        (Number.isFinite(bottomValue) && bottomValue > 0 ? bottomValue * UnitToMm(unit) : Number.NaN)
+    );
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function UpdateSectionHeightDrafts(index) {
+    const topHeightInput    = document.querySelector(`input[data-section="${index}"][data-kind="heights"][data-side="top"]`);
+    const bottomHeightInput = document.querySelector(`input[data-section="${index}"][data-kind="heights"][data-side="bottom"]`);
+    EnsureMeasurementDrafts();
+    const unit = GetSelectedUnitLabel();
+    const topValue    = ParseNumericValue(topHeightInput?.value ?? "");
+    const bottomValue = ParseNumericValue(bottomHeightInput?.value ?? "");
+    windowModel.sectionDrafts.height = (
+        (Number.isFinite(topValue) && topValue > 0 ? topValue * UnitToMm(unit) : Number.NaN) +
+        (Number.isFinite(bottomValue) && bottomValue > 0 ? bottomValue * UnitToMm(unit) : Number.NaN)
+    );
+    UpdateWindow();
+    RenderMeasurements();
+}
+/*
 function BindSectionMeasurementInputs() {
     const container = document.getElementById("sectionControls");
     if (!container) return;
@@ -693,6 +966,134 @@ function BindSectionMeasurementInputs() {
         applyFirstValue(sectionIndex, kind, input);
     });
 }
+*/
+function BindSectionMeasurementInputs() {
+    const container = document.querySelector(".section-measure-grid");
+    if (!container) return;
+
+    const getInputsFor = (section, kind) => {
+        const inputs = container.querySelectorAll(`input[data-section="${section}"][data-kind="${kind}"]`);
+        return Array.from(inputs);
+    };
+
+    const applyWidthDraft = (sectionIndex, input) => {
+        const value = ParseNumericValue(input.value);
+        EnsureSectionMeasurements();
+
+        if (!Number.isFinite(value) || value <= 0) return;
+
+        const unit = GetSelectedUnitLabel();
+        const valueMm = value * UnitToMm(unit);
+
+        windowModel.sectionDrafts[sectionIndex].width = valueMm;
+
+        MarkSectionEdited(sectionIndex);
+        UpdateWindow();
+        RenderMeasurements();
+    };
+
+    const applyHeightDraft = (sectionIndex, inputs) => {
+        const [topInput, bottomInput] = inputs;
+        const top    = ParseNumericValue(topInput?.value);
+        const bottom = ParseNumericValue(bottomInput?.value);
+
+        EnsureSectionMeasurements();
+
+        const unit = GetSelectedUnitLabel();
+
+        if ((Number.isFinite(top) && top > 0) && (Number.isFinite(bottom) && bottom > 0)) {
+            windowModel.sectionDrafts[sectionIndex].height = (top + bottom) * UnitToMm(unit);
+        }
+
+        MarkSectionEdited(sectionIndex);
+        UpdateWindow();
+        RenderMeasurements();
+    };
+
+    // Normalize all "+" buttons
+    container.querySelectorAll("button[data-section][data-kind]").forEach(btn => {
+        btn.textContent = "+";
+        btn.setAttribute("title", translate("add"));
+        btn.setAttribute("aria-label", translate("add"));
+    });
+
+    // CLICK (add measurement)
+    container.addEventListener("click", e => {
+        const btn = e.target.closest("button[data-section][data-kind]");
+        if (!btn) return;
+
+        const sectionIndex = Number(btn.dataset.section);
+        const kind = btn.dataset.kind;
+        const inputs = getInputsFor(sectionIndex, kind);
+
+        if (kind === "widths") {
+            AddSectionMeasurement(sectionIndex, "widths", inputs[0]);
+        } else {
+            AddSectionHeightMeasurement(sectionIndex, inputs[0], inputs[1]);
+        }
+    });
+
+    // ENTER key
+    container.addEventListener("keydown", e => {
+        if (e.key !== "Enter") return;
+
+        const input = e.target.closest("input[data-section][data-kind]");
+        if (!input) return;
+
+        e.preventDefault();
+
+        const sectionIndex = Number(input.dataset.section);
+        const kind = input.dataset.kind;
+
+        const inputs = getInputsFor(sectionIndex, kind);
+
+        if (kind === "widths") {
+            AddSectionMeasurement(sectionIndex, "widths", inputs[0]);
+        } else {
+            AddSectionHeightMeasurement(sectionIndex, inputs[0], inputs[1]);
+        }
+    });
+
+    // LIVE INPUT (draft updates)
+    container.addEventListener("input", e => {
+        const input = e.target.closest("input[data-section][data-kind]");
+        if (!input) return;
+
+        const sectionIndex = Number(input.dataset.section);
+        const kind = input.dataset.kind;
+
+        const inputs = getInputsFor(sectionIndex, kind);
+
+        if (kind === "widths") {
+            applyWidthDraft(sectionIndex, inputs[0]);
+        } else {
+            applyHeightDraft(sectionIndex, inputs);
+        }
+    });
+
+    // REMOVE buttons (width + height lists)
+    container.addEventListener("click", e => {
+        const btn = e.target.closest("button[data-index]");
+        if (!btn) return;
+
+        const list = btn.closest("ul");
+        if (!list) return;
+
+        const index = Number(btn.dataset.index);
+        if (!Number.isFinite(index)) return;
+
+        const sectionEl = btn.closest("[data-section-index]");
+        if (!sectionEl) return;
+
+        const sectionIndex = Number(sectionEl.dataset.sectionIndex);
+
+        if (list.classList.contains("measure-list")) {
+            RemoveSectionMeasurement(sectionIndex, "widths", index);
+        } else {
+            RemoveSectionMeasurement(sectionIndex, "heights", index);
+        }
+    });
+}
 
 function AddSectionMeasurement(sectionIndex, kind, input) {
     if (!input) return;
@@ -731,8 +1132,6 @@ function AddMeasurement(kind, input) {
     EnsureMeasurementDrafts();
     if (kind === "widths") {
         windowModel.measurementDrafts.width = Number.NaN;
-    } else {
-        windowModel.measurementDrafts.height = Number.NaN;
     }
     const listId = kind === "widths" ? "widthList" : "heightList";
     RenderMeasurementList(kind, listId);
@@ -741,6 +1140,45 @@ function AddMeasurement(kind, input) {
         const hasAny = windowModel.measurements.widths.length > 0 || windowModel.measurements.heights.length > 0;
         flatGrid.classList.toggle("has-values", hasAny);
     }
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function AddHeightMeasurement(topInput, bottomInput) {
+    if (!topInput || !bottomInput) return;
+    const topValue    = ParseNumericValue(topInput.value);
+    const bottomValue = ParseNumericValue(bottomInput.value);
+    if (!Number.isFinite(topValue) || topValue <= 0 || !Number.isFinite(bottomValue) || bottomValue <= 0) return;
+    const unit = GetSelectedUnitLabel();
+    const scale = UnitToMm(unit);
+    windowModel.measurements.heights.push({
+        top: topValue * scale,
+        bottom: bottomValue * scale
+    });
+    topInput.value = "";
+    bottomInput.value = "";
+    EnsureMeasurementDrafts();
+    windowModel.measurementDrafts.heightTop = Number.NaN;
+    windowModel.measurementDrafts.heightBottom = Number.NaN;
+    UpdateWindow();
+    RenderMeasurements();
+}
+
+function AddSectionHeightMeasurement(index, topInput, bottomInput) {
+    if (!topInput || !bottomInput) return;
+    const topValue    = ParseNumericValue(topInput.value);
+    const bottomValue = ParseNumericValue(bottomInput.value);
+    if (!Number.isFinite(topValue) || topValue <= 0 || !Number.isFinite(bottomValue) || bottomValue <= 0) return;
+    const unit = GetSelectedUnitLabel();
+    const scale = UnitToMm(unit);
+    windowModel.sectionMeasurements[index].heights.push({
+        top: topValue * scale,
+        bottom: bottomValue * scale
+    });
+    topInput.value = "";
+    bottomInput.value = "";
+    EnsureSectionMeasurementDrafts(index);
+    windowModel.sectionDrafts[index].height = Number.NaN;
     UpdateWindow();
     RenderMeasurements();
 }
@@ -757,11 +1195,49 @@ function RemoveMeasurement(kind, index) {
     UpdateWindow();
     RenderMeasurements();
 }
-
+/*
+function RemoveSectionMeasurement(section, kind, index) {
+    windowModel.sectionMeasurements[section][kind].splice(index, 1);
+    const listId = kind === "widths" ? "widthList" : "heightList";
+    RenderSectionMeasurementList(section, kind, listId);
+    const flatGrid = document.querySelector("#measureControls .measure-grid");
+    if (flatGrid) {
+        const hasAny = windowModel.sectionMeasurements.widths.length > 0 || windowModel.sectionmMeasurements.heights.length > 0;
+        flatGrid.classList.toggle("has-values", hasAny);
+    }
+    UpdateWindow();
+    RenderMeasurements();
+}
+*/
 function GetMinMeasurement(kind) {
     const values = windowModel.measurements[kind];
     if (!values.length) return Number.NaN;
     return Math.min(...values);
+}
+
+function GetHeightValues(side) {
+    return windowModel.measurements.heights
+        .map(pair => pair?.[side])
+        .filter(Number.isFinite);
+}
+
+function GetMinHeightMeasurement(side) {
+    const values = GetHeightValues(side);
+    if (!values.length) return Number.NaN;
+    return Math.min(...values);
+}
+
+function GetSectionHeightValues(index, side) {
+    return windowModel.sectionMeasurements[index].heights
+        .map(pair => pair?.[side])
+        .filter(Number.isFinite);
+}
+
+function GetMinSectionHeightMeasurement(index, side) {
+    const values = GetSectionHeightValues(index, side);
+    if (!values.length) return Number.NaN;
+    const min = Math.min(...values);
+    return min;
 }
 
 function GetMinValue(values) {
@@ -815,6 +1291,40 @@ function RenderMeasurementList(kind, listId) {
     if (!list) return;
     list.innerHTML = "";
     const values = windowModel.measurements[kind];
+    if (kind === "heights") {
+        const topValues = values.map(value => value?.top).filter(Number.isFinite);
+        const bottomValues = values.map(value => value?.bottom).filter(Number.isFinite);
+        const topMin = topValues.length ? Math.min(...topValues) : null;
+        const bottomMin = bottomValues.length ? Math.min(...bottomValues) : null;
+        values.forEach((value, index) => {
+            if (!value || !Number.isFinite(value.top) || !Number.isFinite(value.bottom)) return;
+            const li = document.createElement("li");
+            li.classList.add("measure-item", "measure-item-pair");
+
+            const topSpan = document.createElement("span");
+            topSpan.classList.add("measure-pair-value");
+            if (value.top === topMin) topSpan.classList.add("min");
+            if (IsMeasurementOutOfRange(value.top, topValues)) topSpan.classList.add("out-of-range");
+            topSpan.textContent = FormatMeasurement(value.top);
+
+            const bottomSpan = document.createElement("span");
+            bottomSpan.classList.add("measure-pair-value");
+            if (value.bottom === bottomMin) bottomSpan.classList.add("min");
+            if (IsMeasurementOutOfRange(value.bottom, bottomValues)) bottomSpan.classList.add("out-of-range");
+            bottomSpan.textContent = FormatMeasurement(value.bottom);
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.dataset.index = String(index);
+            btn.textContent = "×";
+
+            li.appendChild(topSpan);
+            li.appendChild(bottomSpan);
+            li.appendChild(btn);
+            list.appendChild(li);
+        });
+        return;
+    }
     const min = values.length ? Math.min(...values) : null;
     values.forEach((value, index) => {
         const li = document.createElement("li");
@@ -839,6 +1349,42 @@ function RenderSectionMeasurementList(sectionIndex, kind, listId) {
     list.innerHTML = "";
     EnsureSectionMeasurements();
     const values = windowModel.sectionMeasurements[sectionIndex][kind];
+
+    if (kind === "heights") {
+        const topValues    = values.map(value => value?.top).filter(Number.isFinite);
+        const bottomValues = values.map(value => value?.bottom).filter(Number.isFinite);
+        const topMin       = topValues.length ? Math.min(...topValues) : null;
+        const bottomMin    = bottomValues.length ? Math.min(...bottomValues) : null;
+        values.forEach((value, index) => {
+            if (!value || !Number.isFinite(value.top) || !Number.isFinite(value.bottom)) return;
+            const li = document.createElement("li");
+            li.classList.add("measure-item", "measure-item-pair");
+
+            const topSpan = document.createElement("span");
+            topSpan.classList.add("measure-pair-value");
+            if (value.top === topMin) topSpan.classList.add("min");
+            if (IsMeasurementOutOfRange(value.top, topValues)) topSpan.classList.add("out-of-range");
+            topSpan.textContent = FormatMeasurement(value.top);
+
+            const bottomSpan = document.createElement("span");
+            bottomSpan.classList.add("measure-pair-value");
+            if (value.bottom === bottomMin) bottomSpan.classList.add("min");
+            if (IsMeasurementOutOfRange(value.bottom, bottomValues)) bottomSpan.classList.add("out-of-range");
+            bottomSpan.textContent = FormatMeasurement(value.bottom);
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.dataset.index = String(index);
+            btn.textContent = "×";
+
+            li.appendChild(topSpan);
+            li.appendChild(bottomSpan);
+            li.appendChild(btn);
+            list.appendChild(li);
+        });
+        return;
+    }
+
     const min = values.length ? Math.min(...values) : null;
     values.forEach((value, index) => {
         const li = document.createElement("li");

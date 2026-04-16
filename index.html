@@ -60,101 +60,130 @@
             </div>
 
             <fieldset class="measure-fieldset" id="measureControls">
+                
                 <div class="measure-grid flat-only">
-                    <div class="measure-list-label" data-i18n="width"></div>
-                    <div class="measure-list-label" data-i18n="height"></div>
+                    
+                    <span data-i18n="width"></span>
+                    <!--div class="measure-list-label" data-i18n="width"></div-->
                     <ul id="widthList" class="measure-list"></ul>
-                    <ul id="heightList" class="measure-list"></ul>
                     <div class="measure-row">
-                        <span data-i18n="width"></span>
                         <input type="number" id="widthMeasure" step="10">
                         <button type="button" id="addWidth" data-i18n="add" aria-label=""></button>
                     </div>
-                    <div class="measure-row">
-                        <span data-i18n="height"></span>
-                        <input type="number" id="heightMeasure" step="10">
+
+                    <span data-i18n="height"></span>
+                    <div class="measure-row height-pair-row">
+                        <span data-i18n="top"></span>
+                        <span data-i18n="bottom"></span>
+                        <span></span>
+                    </div>
+                    <ul id="heightList" class="measure-list-height"></ul>
+                    <div class="measure-row height-pair-row">
+                        <input type="number" id="topHeightMeasure" step="10">
+                        <input type="number" id="bottomHeightMeasure" step="10">
                         <button type="button" id="addHeight" data-i18n="add" aria-label=""></button>
                     </div>
+                
                 </div>
+
                 <fieldset class="section-controls sections-only hidden" id="sectionControls">
-                <legend data-i18n="sections" id="sectionLegend"></legend>
-                <div class="section-selector">
-                    <span data-i18n="sections"></span>
-                    <select id="sectionSelect">
-                        <option value="0" data-i18n="left_sec"></option>
-                        <option value="1" data-i18n="central_sec"></option>
-                        <option value="2" data-i18n="right_sec"></option>
-                    </select>
-                    <button type="button" class="section-toggle-btn" data-section-toggle="0"></button>
-                    <button type="button" class="section-toggle-btn" data-section-toggle="2"></button>
-                </div>
-                <div class="section-measure-grid">
-                    <div class="section-measure" data-section-index="0">
-                        <div class="section-measure-title">
-                            <span data-i18n="left_sec"></span>
-                        </div>
+                    <legend data-i18n="sections" id="sectionLegend"></legend>
+                    <div class="section-selector">
+                        <span data-i18n="sections"></span>
+                        <select id="sectionSelect">
+                            <option value="0" data-i18n="left_sec"></option>
+                            <option value="1" data-i18n="central_sec"></option>
+                            <option value="2" data-i18n="right_sec"></option>
+                        </select>
                         <button type="button" class="section-toggle-btn" data-section-toggle="0"></button>
-                        <div class="measure-grid section-measure-grid-inner">
-                            <div class="measure-list-label" data-i18n="width"></div>
-                            <div class="measure-list-label" data-i18n="height"></div>
-                            <ul id="sectionLeftWidthList" class="measure-list"></ul>
-                            <ul id="sectionLeftHeightList" class="measure-list"></ul>
-                            <div class="measure-row">
-                                <span data-i18n="width"></span>
-                                <input type="number" id="sectionLeftWidthMeasure" step="10" data-section="0" data-kind="widths">
-                                <button type="button" id="addSectionLeftWidth" data-i18n="add" data-section="0" data-kind="widths" aria-label=""></button>
-                            </div>
-                            <div class="measure-row">
-                                <span data-i18n="height"></span>
-                                <input type="number" id="sectionLeftHeightMeasure" step="10" data-section="0" data-kind="heights">
-                                <button type="button" id="addSectionLeftHeight" data-i18n="add" data-section="0" data-kind="heights" aria-label=""></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="section-measure" data-section-index="1">
-                        <div class="section-measure-title">
-                            <span data-i18n="central_sec"></span>
-                        </div>
-                        <div class="measure-grid section-measure-grid-inner">
-                            <div class="measure-list-label" data-i18n="width"></div>
-                            <div class="measure-list-label" data-i18n="height"></div>
-                            <ul id="sectionCenterWidthList" class="measure-list"></ul>
-                            <ul id="sectionCenterHeightList" class="measure-list"></ul>
-                            <div class="measure-row">
-                                <span data-i18n="width"></span>
-                                <input type="number" id="sectionCenterWidthMeasure" step="10" data-section="1" data-kind="widths">
-                                <button type="button" id="addSectionCenterWidth" data-i18n="add" data-section="1" data-kind="widths" aria-label=""></button>
-                            </div>
-                            <div class="measure-row">
-                                <span data-i18n="height"></span>
-                                <input type="number" id="sectionCenterHeightMeasure" step="10" data-section="1" data-kind="heights">
-                                <button type="button" id="addSectionCenterHeight" data-i18n="add" data-section="1" data-kind="heights" aria-label=""></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="section-measure" data-section-index="2">
-                        <div class="section-measure-title">
-                            <span data-i18n="right_sec"></span>
-                        </div>
                         <button type="button" class="section-toggle-btn" data-section-toggle="2"></button>
-                        <div class="measure-grid section-measure-grid-inner">
-                            <div class="measure-list-label" data-i18n="width"></div>
-                            <div class="measure-list-label" data-i18n="height"></div>
-                            <ul id="sectionRightWidthList" class="measure-list"></ul>
-                            <ul id="sectionRightHeightList" class="measure-list"></ul>
-                            <div class="measure-row">
-                                <span data-i18n="width"></span>
-                                <input type="number" id="sectionRightWidthMeasure" step="10" data-section="2" data-kind="widths">
-                                <button type="button" id="addSectionRightWidth" data-i18n="add" data-section="2" data-kind="widths" aria-label=""></button>
+                    </div>
+
+                    <div class="section-measure-grid">
+
+                        <div class="section-measure" data-section-index="0">
+                            <div class="section-measure-title">
+                                <span data-i18n="left_sec"></span>
                             </div>
-                            <div class="measure-row">
+                            <button type="button" class="section-toggle-btn" data-section-toggle="0"></button>
+                            <div class="measure-grid section-measure-grid-inner">
+                                <span data-i18n="width"></span>
+                                <ul id="sectionLeftWidthList" class="measure-list"></ul>
+                                <div class="measure-row">
+                                    <input type="number" id="sectionLeftWidthMeasure" step="10" data-section="0" data-kind="widths">
+                                    <button type="button" id="addSectionLeftWidth" data-i18n="add" data-section="0" data-kind="widths" aria-label=""></button>
+                                </div>
                                 <span data-i18n="height"></span>
-                                <input type="number" id="sectionRightHeightMeasure" step="10" data-section="2" data-kind="heights">
-                                <button type="button" id="addSectionRightHeight" data-i18n="add" data-section="2" data-kind="heights" aria-label=""></button>
+                                <div class="measure-row height-pair-row">
+                                    <span data-i18n="top"></span>
+                                    <span data-i18n="bottom"></span>
+                                    <span></span>
+                                </div>
+                                <ul id="sectionLeftHeightList" class="measure-list-height"></ul>
+                                <div class="measure-row height-pair-row">
+                                    <input type="number" id="sectionLeftTopHeightMeasure" step="10" data-section="0" data-kind="heights" data-side="top">
+                                    <input type="number" id="sectionLeftBottomHeightMeasure" step="10" data-section="0" data-kind="heights" data-side="bottom">
+                                    <button type="button" id="addSectionLeftHeight" data-i18n="add" data-section="0" data-kind="heights" aria-label=""></button>
+                                </div>
                             </div>
                         </div>
+                        
+                        <div class="section-measure" data-section-index="1">
+                            <div class="section-measure-title">
+                                <span data-i18n="central_sec"></span>
+                            </div>
+                            <button type="button" class="section-toggle-btn" data-section-toggle="1"></button>
+                            <div class="measure-grid section-measure-grid-inner">
+                                <span data-i18n="width"></span>
+                                <ul id="sectionCenterWidthList" class="measure-list"></ul>
+                                <div class="measure-row">
+                                    <input type="number" id="sectionCenterWidthMeasure" step="10" data-section="1" data-kind="widths">
+                                    <button type="button" id="addSectionCenterWidth" data-i18n="add" data-section="1" data-kind="widths" aria-label=""></button>
+                                </div>
+                                <span data-i18n="height"></span>
+                                <div class="measure-row height-pair-row">
+                                    <span data-i18n="top"></span>
+                                    <span data-i18n="bottom"></span>
+                                    <span></span>
+                                </div>
+                                <ul id="sectionCenterHeightList" class="measure-list-height"></ul>
+                                <div class="measure-row height-pair-row">
+                                    <input type="number" id="sectionCenterTopHeightMeasure" step="10" data-section="1" data-kind="heights">
+                                    <input type="number" id="sectionCenterBottomHeightMeasure" step="10" data-section="1" data-kind="heights">
+                                    <button type="button" id="addSectionCenterHeight" data-i18n="add" data-section="1" data-kind="heights" aria-label=""></button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section-measure" data-section-index="2">
+                            <div class="section-measure-title">
+                                <span data-i18n="right_sec"></span>
+                            </div>
+                            <button type="button" class="section-toggle-btn" data-section-toggle="2"></button>
+                            <div class="measure-grid section-measure-grid-inner">
+                                <span data-i18n="width"></span>
+                                <ul id="sectionRightWidthList" class="measure-list"></ul>
+                                <div class="measure-row">
+                                    <input type="number" id="sectionRightWidthMeasure" step="10" data-section="2" data-kind="widths">
+                                    <button type="button" id="addSectionRightWidth" data-i18n="add" data-section="2" data-kind="widths" aria-label=""></button>
+                                </div>
+                                <span data-i18n="height"></span>
+                                <div class="measure-row height-pair-row">
+                                    <span data-i18n="top"></span>
+                                    <span data-i18n="bottom"></span>
+                                    <span></span>
+                                </div>
+                                <ul id="sectionRightHeightList" class="measure-list-height"></ul>
+                                <div class="measure-row height-pair-row">
+                                    <input type="number" id="sectionRightTopHeightMeasure" step="10" data-section="2" data-kind="heights">
+                                    <input type="number" id="sectionRightBottomHeightMeasure" step="10" data-section="2" data-kind="heights">
+                                    <button type="button" id="addSectionRightHeight" data-i18n="add" data-section="2" data-kind="heights" aria-label=""></button>
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
-                </div>
+
                 </fieldset>
             </fieldset>
 
